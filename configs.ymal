@@ -1,0 +1,104 @@
+# RAGBench Strategy Configurations
+
+strategies:
+  semantic_chunking:
+    name: "Semantic Chunking"
+    description: "Each document kept as single chunk; topical coherence is primary"
+    
+    chunking:
+      strategy: semantic
+      approach: "topic-boundary-split"
+      logic: |
+        Each document is evaluated as a single semantic unit.
+        In a full ChunkLab implementation, this would split on embedding similarity drops.
+        For this evaluation, we keep each document intact (all 20 docs = 20 chunks).
+    
+    retrieval:
+      method: "dense-similarity"
+      embedding_model: "all-MiniLM-L6-v2"
+      similarity_metric: "cosine"
+      top_k: 3
+    
+    expected_tradeoffs:
+      precision: "HIGH"
+      recall: "MEDIUM"
+      context_size: "SMALL"
+      retrieval_speed: "FAST"
+    
+    best_for:
+      - "High precision requirements (legal, medical)"
+      - "Tightly focused domains"
+      - "Systems where hallucination is costly"
+    
+    limitations:
+      - "May miss multi-chunk information"
+      - "Less effective for long documents"
+
+  parent_child_chunking:
+    name: "Parent-Child Chunking"
+    description: "Small precise child chunks + full parent document for context"
+    
+    chunking:
+      strategy: parent-child
+      approach: "hierarchical-with-fallback"
+      logic: |
+        Each document split into small child chunks (2 sentences each for this eval).
+        Each child maintains link to full parent document.
+        Retrieval returns child for precision + parent for context.
+    
+    retrieval:
+      method: "dense-similarity-with-hierarchy"
+      embedding_model: "all-MiniLM-L6-v2"
+      similarity_metric: "cosine"
+      retrieval_unit: "child"
+      context_unit: "parent"
+      top_k: 3
+    
+    expected_tradeoffs:
+      precision: "MEDIUM"
+      recall: "HIGH"
+      context_size: "LARGE"
+      retrieval_speed: "MEDIUM"
+    
+    best_for:
+      - "Multi-hop reasoning"
+      - "Long documents with scattered info"
+      - "Use cases where context richness > precision"
+    
+    limitations:
+      - "Larger context = more noise"
+      - "More chunks to process (slower)"
+
+evaluation:
+  metrics:
+    - name: "Faithfulness"
+      description: "Answer grounded in retrieved context"
+      formula: "LLM judges claim support by context"
+      important_for: "Reducing hallucination"
+    
+    - name: "Context Relevancy"
+      description: "Retrieved chunks match query intent"
+      formula: "LLM judges chunk relevance to query"
+      important_for: "Retrieval quality"
+    
+    - name: "Answer Relevancy"
+      description: "Answer addresses the question"
+      formula: "LLM judges answer addresses query"
+      important_for: "Generation quality"
+    
+    - name: "Context Recall"
+      description: "Needed info present in context"
+      formula: "LLM judges info coverage"
+      important_for: "Upper-bound on answer quality"
+
+test_dataset:
+  corpus: "20 RAG concept documents"
+  queries: "20 manually curated questions"
+  distribution:
+    direct_retrieval: 8  # "What is X?"
+    understanding: 7     # "Why/How does X work?"
+    conceptual: 5        # "How do X and Y relate?"
+  
+  expected_source_coverage:
+    single_doc: 15       # Questions answerable from one document
+    multi_doc: 5         # Questions requiring cross-document reasoning
