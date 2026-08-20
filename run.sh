@@ -9,7 +9,7 @@ echo ""
 # Check for GROQ_API_KEY
 if [ -z "$GROQ_API_KEY" ]; then
     echo "❌ Error: GROQ_API_KEY not set"
-    echo "   Run: export GROQ_API_KEY='your_key'"
+    echo "   Run: export GROQ_API_KEY='key'"
     exit 1
 fi
 

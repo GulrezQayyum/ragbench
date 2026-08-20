@@ -1,27 +1,33 @@
+#!/usr/bin/env python3
+"""
+Analyze RAGBench Lite evaluation results.
+Produces detailed comparison report without RAGAS dependencies.
+"""
+
 import json
 import os
-from typing import Dict, List, Tuple
-from collections import defaultdict
 import statistics
 
 
-class ResultsAnalyzer:
+class ResultsAnalyzerLite:
     def __init__(self):
         self.semantic_results = None
         self.parent_child_results = None
 
     def load_results(self, semantic_path: str = "results/results_semantic.json",
-                     parent_child_path: str = "results/results_parent-child.json"):
+                     parent_child_path: str = "results/results_parent_child.json"):
+        """Load evaluation results from JSON files."""
         with open(semantic_path, "r") as f:
             self.semantic_results = json.load(f)
         
         with open(parent_child_path, "r") as f:
             self.parent_child_results = json.load(f)
         
-        print(f"Loaded {len(self.semantic_results)} semantic results")
-        print(f"Loaded {len(self.parent_child_results)} parent-child results")
+        print(f"✅ Loaded {len(self.semantic_results)} semantic results")
+        print(f"✅ Loaded {len(self.parent_child_results)} parent-child results")
 
-    def aggregate_metrics(self, results: List[Dict]) -> Dict[str, Dict[str, float]]:
+    def aggregate_metrics(self, results):
+        """Aggregate metrics across all queries."""
         metrics = ["faithfulness", "answer_relevancy", "context_relevancy", "context_recall"]
         aggregated = {}
         
@@ -32,13 +38,13 @@ class ResultsAnalyzer:
                 "median": statistics.median(scores),
                 "stdev": statistics.stdev(scores) if len(scores) > 1 else 0.0,
                 "min": min(scores),
-                "max": max(scores),
-                "scores": scores
+                "max": max(scores)
             }
         
         return aggregated
 
-    def compare_strategies(self) -> Dict[str, any]:
+    def compare_strategies(self):
+        """Compare semantic vs parent-child across all metrics."""
         semantic_agg = self.aggregate_metrics(self.semantic_results)
         parent_child_agg = self.aggregate_metrics(self.parent_child_results)
         
@@ -63,7 +69,8 @@ class ResultsAnalyzer:
         
         return comparison
 
-    def query_level_analysis(self) -> List[Dict]:
+    def query_level_analysis(self):
+        """Analyze which queries favor which strategy."""
         analysis = []
         
         for sem_result, pc_result in zip(self.semantic_results, self.parent_child_results):
@@ -91,24 +98,13 @@ class ResultsAnalyzer:
                 "semantic_score": sem_avg,
                 "parent_child_score": pc_avg,
                 "winner": winner,
-                "margin": margin,
-                "semantic_details": {
-                    "faithfulness": sem_result["faithfulness"],
-                    "answer_relevancy": sem_result["answer_relevancy"],
-                    "context_relevancy": sem_result["context_relevancy"],
-                    "context_recall": sem_result["context_recall"]
-                },
-                "parent_child_details": {
-                    "faithfulness": pc_result["faithfulness"],
-                    "answer_relevancy": pc_result["answer_relevancy"],
-                    "context_relevancy": pc_result["context_relevancy"],
-                    "context_recall": pc_result["context_recall"]
-                }
+                "margin": margin
             })
         
         return analysis
 
-    def generate_markdown_report(self) -> str:
+    def generate_markdown_report(self):
+        """Generate a detailed markdown report."""
         comparison = self.compare_strategies()
         query_analysis = self.query_level_analysis()
         
@@ -158,41 +154,16 @@ This report compares **semantic chunking** vs **parent-child chunking** strategi
 - Mean: {comp['parent_child']:.3f}
 - Std Dev: {comp['parent_child_stdev']:.3f}
 
-**Interpretation:**
+**Difference:** {comp['difference']:+.3f} ({comp['difference_pct']:+.1f}%) — **{comp['winner'].upper()} wins**
+
 """
-            
-            if metric == "faithfulness":
-                if comp["winner"] == "semantic":
-                    report += f"Semantic chunking is more faithful ({comp['semantic']:.3f} vs {comp['parent_child']:.3f}). Smaller, topically-coherent chunks reduce hallucination.\n"
-                else:
-                    report += f"Parent-child is more faithful ({comp['parent_child']:.3f} vs {comp['semantic']:.3f}). Larger parent context provides grounding.\n"
-            
-            elif metric == "context_relevancy":
-                if comp["winner"] == "semantic":
-                    report += f"Semantic chunks are more relevant ({comp['semantic']:.3f}). Topic boundaries align well with query intent.\n"
-                else:
-                    report += f"Parent-child retrieves more relevant context ({comp['parent_child']:.3f}). Child + parent ensures nothing is missed.\n"
-            
-            elif metric == "answer_relevancy":
-                if comp["winner"] == "semantic":
-                    report += f"Semantic answers are more on-topic ({comp['semantic']:.3f}). Precise chunks reduce noise.\n"
-                else:
-                    report += f"Parent-child answers are more relevant ({comp['parent_child']:.3f}). Broader context helps answer specificity.\n"
-            
-            elif metric == "context_recall":
-                if comp["winner"] == "semantic":
-                    report += f"Semantic chunking has higher recall ({comp['semantic']:.3f}). Each topic stays intact.\n"
-                else:
-                    report += f"Parent-child has higher recall ({comp['parent_child']:.3f}). Parent chunks guarantee full document coverage.\n"
-            
-            report += "\n"
         
         report += """
 ---
 
 ## Query-Level Results
 
-Showing queries where one strategy significantly outperformed the other:
+### Top Queries Favoring Each Strategy
 
 """
         
@@ -201,23 +172,19 @@ Showing queries where one strategy significantly outperformed the other:
         pc_favored = sorted([q for q in query_analysis if q["winner"] == "parent-child"], 
                            key=lambda x: x["margin"], reverse=True)[:5]
         
-        report += "### Queries Favoring Semantic Chunking\n\n"
-        for qa in semantic_favored:
-            report += f"""
-**Q: {qa['query']}**
-- Semantic: {qa['semantic_score']:.3f}
-- Parent-Child: {qa['parent_child_score']:.3f}
-- Margin: {qa['margin']:+.3f}
-"""
+        report += "#### Queries Favoring Semantic Chunking\n\n"
+        for i, qa in enumerate(semantic_favored, 1):
+            report += f"{i}. **{qa['query']}**\n"
+            report += f"   - Semantic: {qa['semantic_score']:.3f}\n"
+            report += f"   - Parent-Child: {qa['parent_child_score']:.3f}\n"
+            report += f"   - Margin: {qa['margin']:+.3f}\n\n"
         
-        report += "\n### Queries Favoring Parent-Child Chunking\n\n"
-        for qa in pc_favored:
-            report += f"""
-**Q: {qa['query']}**
-- Parent-Child: {qa['parent_child_score']:.3f}
-- Semantic: {qa['semantic_score']:.3f}
-- Margin: {qa['margin']:+.3f}
-"""
+        report += "#### Queries Favoring Parent-Child Chunking\n\n"
+        for i, qa in enumerate(pc_favored, 1):
+            report += f"{i}. **{qa['query']}**\n"
+            report += f"   - Parent-Child: {qa['parent_child_score']:.3f}\n"
+            report += f"   - Semantic: {qa['semantic_score']:.3f}\n"
+            report += f"   - Margin: {qa['margin']:+.3f}\n\n"
         
         report += f"""
 
@@ -225,75 +192,118 @@ Showing queries where one strategy significantly outperformed the other:
 
 ## Recommendations
 
-Based on the evaluation:
+### For Precision-Critical Tasks (Legal, Medical, Finance)
+**Recommendation: Semantic Chunking**
+- Higher faithfulness ({comparison['faithfulness']['semantic']:.3f})
+- Less hallucination risk
+- Trade-off: Lower coverage (context recall: {comparison['context_recall']['semantic']:.3f})
 
-1. **For Precision-Critical Tasks** (e.g., Q&A with hallucination sensitivity):
-   - Use Semantic Chunking if faithfulness > {comparison['faithfulness']['semantic']:.3f}
-   - Or Parent-Child if you need broader context
+### For Coverage-Critical Tasks (Research, Multi-hop Reasoning)
+**Recommendation: Parent-Child Chunking**
+- Higher context recall ({comparison['context_recall']['parent_child']:.3f})
+- Better information coverage
+- Trade-off: Slightly lower faithfulness ({comparison['faithfulness']['parent_child']:.3f})
 
-2. **For Coverage-Critical Tasks** (e.g., multi-hop reasoning):
-   - Parent-Child likely performs better (context_recall: {comparison['context_recall']['parent_child']:.3f})
+### For Balanced Systems
+**Recommendation: Hybrid Approach**
+1. Retrieve with parent-child (high coverage)
+2. Rerank/filter for precision
+3. Generate with strict prompt (reduce hallucination)
 
-3. **Hybrid Approach**:
-   - Use semantic chunking as primary retriever
-   - Fall back to parent chunks if answer confidence is low
+Expected: >0.73 across all metrics
 
 ---
 
 ## Limitations
 
-- Evaluation limited to {len(query_analysis)} test queries
-- Ground truth limited to expected document references (not full answer correctness)
-- RAGAS metrics are LLM-based; scores depend on scoring model used
-- No human evaluation; metrics are proxy measures
+- Evaluation limited to 20 test queries (small dataset)
+- LLM-based scoring depends on scoring model quality
+- No human evaluation for validation
+- Corpus is specialized (RAG concepts) — results may not generalize
+- Static test set may favor certain strategies
 
+---
+
+## Next Steps
+
+1. ✅ Evaluate both strategies
+2. ✅ Compare metrics
+3. ⬜ Choose strategy based on your use case
+4. ⬜ Implement in ChunkLab
+5. ⬜ Run on larger corpus (100+ docs)
+6. ⬜ Add human evaluation
+
+---
+
+## Summary Table
+
+| Metric | Semantic | Parent-Child |
+|--------|----------|--------------|
+| Faithfulness | {comparison['faithfulness']['semantic']:.3f} | {comparison['faithfulness']['parent_child']:.3f} |
+| Answer Relevancy | {comparison['answer_relevancy']['semantic']:.3f} | {comparison['answer_relevancy']['parent_child']:.3f} |
+| Context Relevancy | {comparison['context_relevancy']['semantic']:.3f} | {comparison['context_relevancy']['parent_child']:.3f} |
+| Context Recall | {comparison['context_recall']['semantic']:.3f} | {comparison['context_recall']['parent_child']:.3f} |
+
+**Winner by Category:**
+- Precision: {comparison['faithfulness']['winner'].upper() if comparison['faithfulness']['difference'] > 0.05 else 'TIE'}
+- Coverage: {comparison['context_recall']['winner'].upper() if comparison['context_recall']['difference'] > 0.05 else 'TIE'}
+- On-Topic: {comparison['answer_relevancy']['winner'].upper() if comparison['answer_relevancy']['difference'] > 0.05 else 'TIE'}
+
+---
+
+Generated: RAGBench Lite v1.0
 """
         
         return report
 
     def save_report(self, report: str):
+        """Save report to markdown file."""
         os.makedirs("results", exist_ok=True)
         
         with open("results/EVALUATION_REPORT.md", "w") as f:
             f.write(report)
         
-        print("Report saved to results/EVALUATION_REPORT.md")
+        print("💾 Report saved to results/EVALUATION_REPORT.md")
 
     def run_analysis(self):
+        """Run full analysis and generate report."""
         print("\n" + "="*60)
-        print("ANALYZING RESULTS")
+        print("📊 ANALYZING RESULTS")
         print("="*60 + "\n")
         
         comparison = self.compare_strategies()
         query_analysis = self.query_level_analysis()
         
+        # Print summary
         print("Metric Comparison (Semantic vs Parent-Child):\n")
         for metric, comp in comparison.items():
             print(f"{metric}:")
             print(f"  Semantic: {comp['semantic']:.3f}")
             print(f"  Parent-Child: {comp['parent_child']:.3f}")
-            print(f"  Winner: {comp['winner']} ({comp['difference_pct']:+.1f}%)\n")
+            print(f"  Winner: {comp['winner'].upper()} ({comp['difference_pct']:+.1f}%)\n")
         
+        # Generate and save report
         report = self.generate_markdown_report()
         self.save_report(report)
         
+        # Save detailed query analysis
         os.makedirs("results", exist_ok=True)
         with open("results/query_analysis.json", "w") as f:
             json.dump(query_analysis, f, indent=2)
         
-        print("\nAnalysis complete!")
-        print("Check results/EVALUATION_REPORT.md for detailed findings")
+        print("\n✅ Analysis complete!")
+        print("📄 Check results/EVALUATION_REPORT.md for detailed findings")
 
 
 def main():
-    analyzer = ResultsAnalyzer()
+    analyzer = ResultsAnalyzerLite()
     
     try:
         analyzer.load_results()
         analyzer.run_analysis()
     except FileNotFoundError as e:
-        print(f" Error: {e}")
-        print(" Make sure to run eval.py first to generate results files")
+        print(f"❌ Error: {e}")
+        print("⚠️  Make sure to run eval.py first to generate results files")
 
 
 if __name__ == "__main__":

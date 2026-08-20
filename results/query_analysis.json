@@ -1,0 +1,142 @@
+[
+  {
+    "query": "How does RRF combine results from different rankers?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "What makes cross-encoders more accurate than comparing two separate embeddings?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "Explain how keyword frequency scoring works in sparse search",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "How do neural embeddings enable similarity search between text?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "How are real-world facts represented so a system can traverse them?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "What is late chunking and why keep document-level context in each chunk?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "How does parent-child chunking balance precise matching with full context?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "How do you check if a generated answer is actually grounded in what was retrieved?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "What metric caps answer quality based on how much needed info was retrieved?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "Why would a system generate a fake answer before embedding a search query?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "How does rephrasing one question into several versions help retrieval?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "What is the benefit of asking a broader question before the specific one?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "How does a system decide which retrieval approach to use for a given question?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "How do you split text based on topic shifts instead of a fixed length?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "What step connects a mentioned name to a node in a graph?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "What tradeoff do fast approximate vector search methods make?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "How do you measure whether a generated answer stays on topic?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "What is the simplest way to break a document into pieces?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "How can questions requiring multiple connected facts be answered?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  },
+  {
+    "query": "How can a piece of text's embedding reflect the context around it?",
+    "semantic_score": 0.5,
+    "parent_child_score": 0.5,
+    "winner": "semantic",
+    "margin": 0.0
+  }
+]
