@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
+
 """
-RAGBench Evaluation Runner - IMPROVED VERSION
-Robust scoring with better error handling
+RAGBench Evaluation Runner
+
+Compares semantic chunking vs parent-child chunking
+using Groq LLM-based evaluation metrics.
 """
 
 import json
 import os
 import re
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
 import chromadb
@@ -24,271 +27,633 @@ class ChunkingConfig:
 
 
 class RAGEvaluator:
-    def __init__(self, corpus_path: str = "corpus.json", queries_path: str = "test_queries.json"):
-        """Initialize evaluator with corpus and test queries."""
+
+    def __init__(
+        self,
+        corpus_path: str = "corpus.json",
+        queries_path: str = "test_queries.json",
+    ):
+        """Initialize evaluator."""
+
         self.corpus = self._load_json(corpus_path)
         self.queries = self._load_json(queries_path)
-        self.groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-        self.embeddings_model = SentenceTransformer("all-MiniLM-L6-v2")
+
+        self.groq_client = Groq(
+            api_key=os.getenv("GROQ_API_KEY")
+        )
+
+        self.embeddings_model = SentenceTransformer(
+            "all-MiniLM-L6-v2"
+        )
+
         self.chroma_client = chromadb.Client()
-        
+
         print(f"✅ Loaded {len(self.corpus)} documents")
         print(f"✅ Loaded {len(self.queries)} test queries")
+
+    # ============================================================
+    # DATA LOADING
+    # ============================================================
 
     @staticmethod
     def _load_json(path: str) -> Any:
         """Load JSON file."""
+
         with open(path, "r") as f:
             return json.load(f)
 
-    def chunk_corpus_semantic(self) -> Dict[str, str]:
-        """Semantic chunking: Keep each document as one chunk"""
+    # ============================================================
+    # CHUNKING
+    # ============================================================
+
+    def chunk_corpus_semantic(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Semantic chunking.
+
+        For this benchmark, each document is kept as one chunk.
+        """
+
         chunks = {}
+
         for doc in self.corpus:
+
             doc_id = doc["doc_id"]
             content = doc["content"]
+
             chunks[f"{doc_id}_semantic"] = {
                 "content": content,
                 "source_doc": doc_id,
-                "strategy": "semantic"
+                "strategy": "semantic",
             }
-        print(f"✅ Semantic chunking: {len(chunks)} chunks created")
+
+        print(
+            f"✅ Semantic chunking: {len(chunks)} chunks created"
+        )
+
         return chunks
 
-    def chunk_corpus_parent_child(self, sentences_per_child: int = 2) -> Dict[str, str]:
-        """Parent-child chunking: Split each doc into child chunks + keep parent."""
+    def chunk_corpus_parent_child(
+        self,
+        sentences_per_child: int = 2,
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Parent-child chunking.
+
+        Each document keeps its full parent document and
+        additionally creates smaller child chunks.
+        """
+
         chunks = {}
         parent_chunk_id = 0
-        
+
         for doc in self.corpus:
+
             doc_id = doc["doc_id"]
             content = doc["content"]
-            
-            parent_id = f"{doc_id}_parent_{parent_chunk_id}"
+
+            # -------------------------
+            # Parent
+            # -------------------------
+
+            parent_id = (
+                f"{doc_id}_parent_{parent_chunk_id}"
+            )
+
             chunks[parent_id] = {
                 "content": content,
                 "source_doc": doc_id,
                 "strategy": "parent-child",
-                "type": "parent"
+                "type": "parent",
             }
-            
+
+            # -------------------------
+            # Children
+            # -------------------------
+
             sentences = content.split(". ")
-            for i in range(0, len(sentences), sentences_per_child):
-                child_sentences = sentences[i:i+sentences_per_child]
-                child_content = ". ".join(child_sentences)
+
+            for i in range(
+                0,
+                len(sentences),
+                sentences_per_child,
+            ):
+
+                child_sentences = sentences[
+                    i : i + sentences_per_child
+                ]
+
+                child_content = ". ".join(
+                    child_sentences
+                )
+
                 if child_content.strip():
-                    child_id = f"{doc_id}_child_{i//sentences_per_child}"
+
+                    child_id = (
+                        f"{doc_id}_child_"
+                        f"{i // sentences_per_child}"
+                    )
+
                     chunks[child_id] = {
                         "content": child_content,
                         "source_doc": doc_id,
                         "strategy": "parent-child",
                         "type": "child",
-                        "parent_id": parent_id
+                        "parent_id": parent_id,
                     }
+
             parent_chunk_id += 1
-        
-        print(f"✅ Parent-child chunking: {len(chunks)} chunks created")
+
+        print(
+            f"✅ Parent-child chunking: "
+            f"{len(chunks)} chunks created"
+        )
+
         return chunks
 
-    def build_retriever(self, chunks: Dict[str, str], collection_name: str) -> Any:
-        """Build ChromaDB collection for retrieval."""
+    # ============================================================
+    # RETRIEVER
+    # ============================================================
+
+    def build_retriever(
+        self,
+        chunks: Dict[str, Dict[str, Any]],
+        collection_name: str,
+    ) -> Any:
+        """Build ChromaDB collection."""
+
         try:
-            self.chroma_client.delete_collection(name=collection_name)
-        except:
+            self.chroma_client.delete_collection(
+                name=collection_name
+            )
+        except Exception:
             pass
-        
-        collection = self.chroma_client.create_collection(name=collection_name)
-        
+
+        collection = self.chroma_client.create_collection(
+            name=collection_name
+        )
+
         chunk_ids = []
         chunk_contents = []
         chunk_metadatas = []
-        
+
         for chunk_id, chunk_data in chunks.items():
+
             chunk_ids.append(chunk_id)
-            chunk_contents.append(chunk_data["content"])
-            chunk_metadatas.append({
-                "source_doc": chunk_data["source_doc"],
-                "strategy": chunk_data["strategy"]
-            })
-        
-        embeddings = self.embeddings_model.encode(chunk_contents).tolist()
-        
+            chunk_contents.append(
+                chunk_data["content"]
+            )
+
+            chunk_metadatas.append(
+                {
+                    "source_doc": chunk_data["source_doc"],
+                    "strategy": chunk_data["strategy"],
+                }
+            )
+
+        embeddings = (
+            self.embeddings_model
+            .encode(chunk_contents)
+            .tolist()
+        )
+
         collection.add(
             ids=chunk_ids,
             embeddings=embeddings,
             documents=chunk_contents,
-            metadatas=chunk_metadatas
+            metadatas=chunk_metadatas,
         )
-        
-        print(f"✅ ChromaDB collection '{collection_name}' created with {len(chunk_ids)} chunks")
+
+        print(
+            f"✅ ChromaDB collection "
+            f"'{collection_name}' created with "
+            f"{len(chunk_ids)} chunks"
+        )
+
         return collection
 
-    def retrieve(self, query: str, collection: Any, top_k: int = 3) -> List[str]:
-        """Retrieve top-k chunks for a query."""
-        query_embedding = self.embeddings_model.encode(query).tolist()
+    def retrieve(
+        self,
+        query: str,
+        collection: Any,
+        top_k: int = 3,
+    ) -> List[str]:
+        """Retrieve top-k documents."""
+
+        query_embedding = (
+            self.embeddings_model
+            .encode(query)
+            .tolist()
+        )
+
         results = collection.query(
             query_embeddings=[query_embedding],
-            n_results=top_k
+            n_results=top_k,
         )
-        
-        documents = results["documents"][0] if results["documents"] else []
-        return documents
 
-    def generate_answer(self, query: str, context: List[str]) -> str:
-        """Generate answer using Groq given query and context."""
+        if not results["documents"]:
+            return []
+
+        return results["documents"][0]
+
+    # ============================================================
+    # ANSWER GENERATION
+    # ============================================================
+
+    def generate_answer(
+        self,
+        query: str,
+        context: List[str],
+    ) -> str:
+        """Generate an answer using Groq."""
+
         context_text = "\n\n".join(context)
-        
-        prompt = f"""Answer based ONLY on this context. Be concise.
 
-Question: {query}
+        prompt = f"""Answer based ONLY on this context.
+Be concise.
+
+Question:
+{query}
 
 Context:
 {context_text}
 
 Answer:"""
-        
-        response = self.groq_client.chat.completions.create(
-            model="openai/gpt-oss-120b",
-            max_tokens=300,
-            messages=[{"role": "user", "content": prompt}]
+
+        response = (
+            self.groq_client
+            .chat.completions.create(
+                model="openai/gpt-oss-120b",
+                max_tokens=300,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+            )
         )
-        
-        return response.choices[0].message.content.strip()
 
-    def extract_score(self, text: str) -> float:
-        """Extract score from response text robustly."""
+        text = response.choices[0].message.content
+
+        if text is None:
+            raise ValueError(
+                "LLM returned empty answer."
+            )
+
+        return text.strip()
+
+    # ============================================================
+    # SCORE EXTRACTION
+    # ============================================================
+
+    @staticmethod
+    def extract_score(text: str) -> float:
+        """
+        Extract a valid score between 0 and 1.
+        """
+
+        if not text:
+            raise ValueError(
+                "Empty LLM scoring response."
+            )
+
+        text = text.strip()
+
+        # First try the entire response.
         try:
-            # Try to find a number like 0.XX
-            match = re.search(r'0\.\d+', text.strip())
-            if match:
-                score = float(match.group())
-                return min(1.0, max(0.0, score))
-            # Try direct float conversion
-            score = float(text.strip().split()[0])
-            return min(1.0, max(0.0, score))
-        except:
-            return 0.5
 
-    def score_faithfulness(self, query: str, context: List[str], answer: str) -> float:
-        """Score how faithful answer is to context (0-1)."""
+            score = float(text)
+
+            if 0.0 <= score <= 1.0:
+                return score
+
+        except ValueError:
+            pass
+
+        # If the model returned something like:
+        #
+        # "Score: 0.92"
+        #
+        # extract the numeric score.
+
+        match = re.search(
+            r"(?<!\d)(?:0(?:\.\d+)?|1(?:\.0+)?)(?!\d)",
+            text,
+        )
+
+        if match:
+
+            score = float(match.group())
+
+            return score
+
+        raise ValueError(
+            "Could not extract valid score from "
+            f"LLM response: {text!r}"
+        )
+
+    # ============================================================
+    # REUSABLE LLM SCORER
+    # ============================================================
+
+    def _call_llm_score(
+        self,
+        prompt: str,
+        metric_name: str,
+    ) -> Optional[float]:
+        """
+        Call Groq to score a metric.
+
+        Returns None if the LLM response is invalid
+        instead of pretending the score is 0.5.
+        """
+
+        try:
+
+            response = (
+                self.groq_client
+                .chat.completions.create(
+                    model="openai/gpt-oss-120b",
+                    max_tokens=100,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt,
+                        }
+                    ],
+                )
+            )
+
+            text = response.choices[0].message.content
+
+            if text is None:
+
+                raise ValueError(
+                    "LLM returned None content."
+                )
+
+            text = text.strip()
+
+            print(
+                f"DEBUG {metric_name.upper()} "
+                f"RESPONSE: {repr(text)}"
+            )
+
+            return self.extract_score(text)
+
+        except Exception as e:
+
+            print(
+                f"❌ {metric_name.upper()} ERROR: {e}"
+            )
+
+            return None
+
+    # ============================================================
+    # FAITHFULNESS
+    # ============================================================
+
+    def score_faithfulness(
+        self,
+        query: str,
+        context: List[str],
+        answer: str,
+    ) -> Optional[float]:
+        """Score whether answer is grounded in context."""
+
         context_text = "\n\n".join(context)
-        
-        prompt = f"""Rate faithfulness 0-1: Is answer grounded in context?
 
-Context: {context_text[:500]}...
+        prompt = f"""Return ONLY a number between 0 and 1.
 
-Answer: {answer}
+Do not explain your answer.
+
+Rate faithfulness:
+Is the answer grounded in the provided context?
+
+Context:
+{context_text}
+
+Answer:
+{answer}
 
 Score (0-1):"""
-        
-        try:
-            response = self.groq_client.chat.completions.create(
-                model="mixtral-8x7b-32768",
-                max_tokens=20,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            text = response.choices[0].message.content.strip()
-            return self.extract_score(text)
-        except Exception as e:
-            return 0.5
 
-    def score_context_relevancy(self, query: str, context: List[str]) -> float:
-        """Score how relevant the retrieved context is to the query (0-1)."""
+        return self._call_llm_score(
+            prompt,
+            "faithfulness",
+        )
+
+    # ============================================================
+    # CONTEXT RELEVANCY
+    # ============================================================
+
+    def score_context_relevancy(
+        self,
+        query: str,
+        context: List[str],
+    ) -> Optional[float]:
+        """Score relevance of retrieved context."""
+
         context_text = "\n\n".join(context)
-        
-        prompt = f"""Rate relevancy 0-1: Is context on-topic for this query?
 
-Query: {query}
+        prompt = f"""Return ONLY a number between 0 and 1.
 
-Context: {context_text[:500]}...
+Do not explain your answer.
 
-Score (0-1):"""
-        
-        try:
-            response = self.groq_client.chat.completions.create(
-                model="mixtral-8x7b-32768",
-                max_tokens=20,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            text = response.choices[0].message.content.strip()
-            return self.extract_score(text)
-        except Exception as e:
-            return 0.5
+Rate context relevancy:
+Is the retrieved context relevant to the query?
 
-    def score_answer_relevancy(self, query: str, answer: str) -> float:
-        """Score how well the answer addresses the query (0-1)."""
-        prompt = f"""Rate relevancy 0-1: Does answer address the query?
+Query:
+{query}
 
-Query: {query}
-
-Answer: {answer}
+Context:
+{context_text}
 
 Score (0-1):"""
-        
-        try:
-            response = self.groq_client.chat.completions.create(
-                model="mixtral-8x7b-32768",
-                max_tokens=20,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            text = response.choices[0].message.content.strip()
-            return self.extract_score(text)
-        except Exception as e:
-            return 0.5
 
-    def score_context_recall(self, query: str, context: List[str], answer: str) -> float:
-        """Score if context contains info needed for answer (0-1)."""
+        return self._call_llm_score(
+            prompt,
+            "context_relevancy",
+        )
+
+    # ============================================================
+    # ANSWER RELEVANCY
+    # ============================================================
+
+    def score_answer_relevancy(
+        self,
+        query: str,
+        answer: str,
+    ) -> Optional[float]:
+        """Score whether answer addresses the query."""
+
+        prompt = f"""Return ONLY a number between 0 and 1.
+
+Do not explain your answer.
+
+Rate answer relevancy:
+Does the answer directly address the query?
+
+Query:
+{query}
+
+Answer:
+{answer}
+
+Score (0-1):"""
+
+        return self._call_llm_score(
+            prompt,
+            "answer_relevancy",
+        )
+
+    # ============================================================
+    # CONTEXT RECALL
+    # ============================================================
+
+    def score_context_recall(
+        self,
+        query: str,
+        context: List[str],
+        answer: str,
+    ) -> Optional[float]:
+        """
+        Score whether context contains the information
+        needed to answer the question.
+        """
+
         context_text = "\n\n".join(context)
-        
-        prompt = f"""Rate recall 0-1: Does context have all info needed for this answer?
 
-Query: {query}
+        prompt = f"""Return ONLY a number between 0 and 1.
 
-Context: {context_text[:500]}...
+Do not explain your answer.
 
-Answer: {answer}
+Rate context recall:
+Does the context contain the information needed
+to answer the question correctly?
+
+Query:
+{query}
+
+Context:
+{context_text}
+
+Answer:
+{answer}
 
 Score (0-1):"""
-        
-        try:
-            response = self.groq_client.chat.completions.create(
-                model="mixtral-8x7b-32768",
-                max_tokens=20,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            text = response.choices[0].message.content.strip()
-            return self.extract_score(text)
-        except Exception as e:
-            return 0.5
 
-    def run_evaluation(self, config: ChunkingConfig, top_k: int = 3) -> List[Dict[str, Any]]:
-        """Run full evaluation pipeline for a chunking strategy."""
-        print(f"\n{'='*60}")
+        return self._call_llm_score(
+            prompt,
+            "context_recall",
+        )
+
+    # ============================================================
+    # EVALUATION
+    # ============================================================
+
+    def run_evaluation(
+        self,
+        config: ChunkingConfig,
+        top_k: int = 3,
+    ) -> List[Dict[str, Any]]:
+        """Run evaluation for one chunking strategy."""
+
+        print("\n" + "=" * 60)
         print(f"🚀 Evaluating: {config.name}")
-        print(f"{'='*60}")
-        
+        print("=" * 60)
+
+        # -------------------------
+        # Create chunks
+        # -------------------------
+
         if config.strategy == "semantic":
+
             chunks = self.chunk_corpus_semantic()
+
         else:
+
             chunks = self.chunk_corpus_parent_child()
-        
-        collection = self.build_retriever(chunks, collection_name=config.name)
-        
+
+        # -------------------------
+        # Build retriever
+        # -------------------------
+
+        collection = self.build_retriever(
+            chunks,
+            collection_name=config.name,
+        )
+
         results = []
-        for i, test_query in enumerate(self.queries, 1):
+
+        # -------------------------
+        # Evaluate queries
+        # -------------------------
+
+        for i, test_query in enumerate(
+            self.queries,
+            1,
+        ):
+
             query = test_query["query"]
-            relevant_ids = test_query["relevant_ids"]
-            
-            print(f"\n[{i}/{len(self.queries)}] {query[:60]}...")
-            
-            retrieved_context = self.retrieve(query, collection, top_k=top_k)
-            answer = self.generate_answer(query, retrieved_context)
-            
-            faithfulness = self.score_faithfulness(query, retrieved_context, answer)
-            context_relevancy = self.score_context_relevancy(query, retrieved_context)
-            answer_relevancy = self.score_answer_relevancy(query, answer)
-            context_recall = self.score_context_recall(query, retrieved_context, answer)
-            
+
+            relevant_ids = test_query[
+                "relevant_ids"
+            ]
+
+            print(
+                f"\n[{i}/{len(self.queries)}] "
+                f"{query[:60]}..."
+            )
+
+            # Retrieval
+            retrieved_context = self.retrieve(
+                query,
+                collection,
+                top_k=top_k,
+            )
+
+            # Answer generation
+            answer = self.generate_answer(
+                query,
+                retrieved_context,
+            )
+
+            # Metrics
+            faithfulness = (
+                self.score_faithfulness(
+                    query,
+                    retrieved_context,
+                    answer,
+                )
+            )
+
+            context_relevancy = (
+                self.score_context_relevancy(
+                    query,
+                    retrieved_context,
+                )
+            )
+
+            answer_relevancy = (
+                self.score_answer_relevancy(
+                    query,
+                    answer,
+                )
+            )
+
+            context_recall = (
+                self.score_context_recall(
+                    query,
+                    retrieved_context,
+                    answer,
+                )
+            )
+
+            # -------------------------
+            # Save result
+            # -------------------------
+
             result = {
                 "query_id": test_query["query_id"],
                 "query": query,
@@ -299,71 +664,187 @@ Score (0-1):"""
                 "faithfulness": faithfulness,
                 "answer_relevancy": answer_relevancy,
                 "context_relevancy": context_relevancy,
-                "context_recall": context_recall
+                "context_recall": context_recall,
             }
+
             results.append(result)
-            
-            print(f"   F:{faithfulness:.2f} | AR:{answer_relevancy:.2f} | CR:{context_relevancy:.2f} | REC:{context_recall:.2f}")
-        
+
+            # -------------------------
+            # Display scores
+            # -------------------------
+
+            f_score = (
+                f"{faithfulness:.2f}"
+                if faithfulness is not None
+                else "N/A"
+            )
+
+            ar_score = (
+                f"{answer_relevancy:.2f}"
+                if answer_relevancy is not None
+                else "N/A"
+            )
+
+            cr_score = (
+                f"{context_relevancy:.2f}"
+                if context_relevancy is not None
+                else "N/A"
+            )
+
+            rec_score = (
+                f"{context_recall:.2f}"
+                if context_recall is not None
+                else "N/A"
+            )
+
+            print(
+                f"   F:{f_score} | "
+                f"AR:{ar_score} | "
+                f"CR:{cr_score} | "
+                f"REC:{rec_score}"
+            )
+
         return results
 
-    def save_results(self, results: List[Dict], config: ChunkingConfig):
-        """Save evaluation results to JSON."""
-        # Use underscore in filename for consistency
-        output_file = f"results/results_{config.strategy.replace('-', '_')}.json"
-        os.makedirs("results", exist_ok=True)
-        
-        with open(output_file, "w") as f:
-            json.dump(results, f, indent=2)
-        
-        print(f"\n💾 Results saved to {output_file}")
+    # ============================================================
+    # SAVE RESULTS
+    # ============================================================
 
+    def save_results(
+        self,
+        results: List[Dict[str, Any]],
+        config: ChunkingConfig,
+    ):
+        """Save evaluation results to JSON."""
+
+        output_file = (
+            "results/results_"
+            f"{config.strategy.replace('-', '_')}.json"
+        )
+
+        os.makedirs(
+            "results",
+            exist_ok=True,
+        )
+
+        with open(
+            output_file,
+            "w",
+        ) as f:
+
+            json.dump(
+                results,
+                f,
+                indent=2,
+            )
+
+        print(
+            f"\n💾 Results saved to {output_file}"
+        )
+
+
+# ================================================================
+# MAIN
+# ================================================================
 
 def main():
-    """Run full evaluation comparing semantic vs parent-child chunking."""
+    """Compare semantic and parent-child chunking."""
+
     evaluator = RAGEvaluator()
-    
+
     configs = [
+
         ChunkingConfig(
             name="semantic_chunking",
             strategy="semantic",
             chunk_size=512,
-            overlap=0
+            overlap=0,
         ),
+
         ChunkingConfig(
             name="parent_child_chunking",
             strategy="parent-child",
             chunk_size=256,
-            overlap=50
-        )
+            overlap=50,
+        ),
+
     ]
-    
+
     all_results = {}
+
+    # ------------------------------------------------------------
+    # Run evaluations
+    # ------------------------------------------------------------
+
     for config in configs:
-        results = evaluator.run_evaluation(config)
-        all_results[config.strategy] = results
-        evaluator.save_results(results, config)
-    
-    print("\n" + "="*60)
+
+        results = evaluator.run_evaluation(
+            config
+        )
+
+        all_results[
+            config.strategy
+        ] = results
+
+        evaluator.save_results(
+            results,
+            config,
+        )
+
+    # ------------------------------------------------------------
+    # Results comparison
+    # ------------------------------------------------------------
+
+    print("\n" + "=" * 60)
     print("📊 RESULTS COMPARISON")
-    print("="*60)
-    
+    print("=" * 60)
+
     for strategy, results in all_results.items():
+
         print(f"\n{strategy.upper()}:")
-        
-        metrics_data = {
-            "faithfulness": [r["faithfulness"] for r in results],
-            "answer_relevancy": [r["answer_relevancy"] for r in results],
-            "context_relevancy": [r["context_relevancy"] for r in results],
-            "context_recall": [r["context_recall"] for r in results]
-        }
-        
-        for metric, scores in metrics_data.items():
-            avg_score = sum(scores) / len(scores)
+
+        metrics = [
+            "faithfulness",
+            "answer_relevancy",
+            "context_relevancy",
+            "context_recall",
+        ]
+
+        for metric in metrics:
+
+            scores = [
+                result[metric]
+                for result in results
+                if result[metric] is not None
+            ]
+
+            if not scores:
+
+                print(
+                    f"  {metric}: "
+                    f"N/A (0/{len(results)} valid)"
+                )
+
+                continue
+
+            avg_score = (
+                sum(scores) / len(scores)
+            )
+
             min_score = min(scores)
             max_score = max(scores)
-            print(f"  {metric}: {avg_score:.3f} (range: {min_score:.3f}-{max_score:.3f})")
-    
+
+            print(
+                f"  {metric}: "
+                f"{avg_score:.3f} "
+                f"(range: "
+                f"{min_score:.3f}-"
+                f"{max_score:.3f}, "
+                f"valid: "
+                f"{len(scores)}/"
+                f"{len(results)})"
+            )
+
     print("\n✅ Evaluation complete!")
     print("📄 Next: python analyze_results.py")
 
