@@ -10,7 +10,7 @@
       "Cross-encoder rerankers take a query and a candidate passage together as a single input to a transformer, letting attention flow between them, which usually produces more accurate relevance scores than comparing two independently computed embeddings.",
       "Dense retrieval encodes both queries and documents into the same vector space using a neural embedding model, then ranks documents by cosine similarity or dot product to the query vector."
     ],
-    "generated_answer": "RRF (Reciprocal Rank Fusion) scores each document by summing the reciprocals of its ranks across the input lists:  \n\n\\[\n\\text{score}(d)=\\sum_{i=1}^{N}\\frac{1}{k + \\text{rank}_{i}(d)}\n\\]\n\nwhere \\(k\\) is a constant (often\u202f60) and \\(\\text{rank}_{i}(d)\\) is the position of document\u202f\\(d\\) in the \\(i^{th}\\) ranker\u2019s list (if absent, the term is omitted). Documents that appear near the top in multiple rankers get higher summed scores and rise to the top of the fused ranking, while those appearing only once or lower down receive lower scores.",
+    "generated_answer": "Reciprocal Rank Fusion (RRF) scores each document by adding\u202f\\( \\frac{1}{k + \\text{rank}} \\)\u202ffor that document in every ranked list it appears in (where *k* is a constant, often\u202f60). The summed score ranks documents higher if they appear near the top of multiple lists, allowing RRF to promote items that are consistently high\u2011ranked across different retrievers.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -28,7 +28,7 @@
       "Contextual embeddings adjust a chunk's vector representation using surrounding document context, so that a chunk which reads ambiguously on its own still embeds close to queries about the topic it actually belongs to.",
       "Vector databases like ChromaDB store embeddings alongside metadata and support approximate nearest neighbor search, which trades a small amount of recall for large gains in query speed compared to brute-force comparison."
     ],
-    "generated_answer": "Cross\u2011encoders feed the query and candidate passage together into a single transformer, so attention can directly model interactions between the two texts. This joint processing lets the model capture fine\u2011grained relevance signals that are lost when each text is encoded separately and then compared only via their independent embeddings, resulting in more accurate scores.",
+    "generated_answer": "Cross\u2011encoders feed the query and candidate passage to the transformer **as a single combined input**, so the model\u2019s attention layers can directly model interactions between the two texts. This joint processing lets the encoder capture fine\u2011grained relevance cues that independent embeddings miss, yielding more accurate relevance scores.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -46,7 +46,7 @@
       "Dense retrieval encodes both queries and documents into the same vector space using a neural embedding model, then ranks documents by cosine similarity or dot product to the query vector.",
       "Vector databases like ChromaDB store embeddings alongside metadata and support approximate nearest neighbor search, which trades a small amount of recall for large gains in query speed compared to brute-force comparison."
     ],
-    "generated_answer": "In sparse search (e.g., BM25), each document receives a score for a query term based on **how often the term appears** (term frequency, TF) and how **rare the term is across the whole collection** (inverse document frequency, IDF). The TF component grows with each additional occurrence, but a **saturation function** (often a logarithm or BM25\u2019s \u201ck1\u201d term) limits the boost so that repeating a keyword many times yields diminishing returns rather than an unbounded increase. The final BM25 score multiplies the saturated TF by the IDF, and sums these contributions for all query terms to rank documents.",
+    "generated_answer": "In sparse search, each query term is scored against a document using a function like **BM25**.  \nThe score is computed from two components:\n\n1. **Term Frequency (TF)** \u2013 how many times the keyword appears in the document. More occurrences raise the score, but BM25 applies a *saturation* curve so that each additional occurrence contributes less than the previous one (preventing an unbounded boost).  \n2. **Inverse Document Frequency (IDF)** \u2013 a weight that reflects how rare the term is across the whole collection; rare terms get higher weights, common terms lower weights.\n\nThe final BM25 score is roughly:  \n\n\\[",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -64,7 +64,7 @@
       "Cross-encoder rerankers take a query and a candidate passage together as a single input to a transformer, letting attention flow between them, which usually produces more accurate relevance scores than comparing two independently computed embeddings.",
       "Contextual embeddings adjust a chunk's vector representation using surrounding document context, so that a chunk which reads ambiguously on its own still embeds close to queries about the topic it actually belongs to."
     ],
-    "generated_answer": "Neural embeddings map each piece of text (query or document) to a dense vector in a shared semantic space. Because the embedding model is trained to place texts with similar meaning close together, similarity search reduces to computing a cheap geometric similarity\u2014typically cosine similarity or dot\u2011product\u2014between the query vector and all document vectors. The highest\u2011scoring documents are returned as the most textually similar results.",
+    "generated_answer": "Neural embeddings map each query and each document (or text chunk) into a shared high\u2011dimensional vector space using a learned encoder. Because semantically related texts receive vectors that lie near each other, similarity search reduces to a simple geometric operation: compute the cosine similarity (or dot product) between the query\u2019s embedding and each document\u2019s embedding and rank the documents by the highest scores. This enables fast, dense retrieval of texts that are meaningfully close to the query.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -82,7 +82,7 @@
       "Entity linking maps a mention of a name or term in text to a specific node in a knowledge graph, which is a prerequisite step before multi-hop graph traversal can be used to answer a question about that entity.",
       "GraphRAG combines a knowledge graph with vector retrieval so that a system can answer multi-hop questions that require connecting facts across several documents, not just questions answerable from a single passage."
     ],
-    "generated_answer": "Real\u2011world facts are encoded as **triples**\u2014\u202f*subject\u202f\u2013\u202frelation\u202f\u2013\u202fobject*\u2014in a **knowledge graph**. Each entity becomes a node, each relation an edge, and linking mentions in text to these nodes (entity linking) lets the system traverse the graph (or a GraphRAG\u2011augmented graph) to answer multi\u2011hop queries.",
+    "generated_answer": "Real\u2011world facts are encoded as **triples**\u2014\u27e8subject,\u202frelation,\u202fobject\u27e9\u2014in a knowledge graph. Each triple becomes an edge linking two entity nodes, so a system can \u201cwalk\u201d from one node to another across relations to answer multi\u2011hop queries.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -100,7 +100,7 @@
       "Parent-child chunking splits a document into small child chunks for precise retrieval matching, while keeping a link to a larger parent chunk that gets returned to the language model for fuller context.",
       "Contextual embeddings adjust a chunk's vector representation using surrounding document context, so that a chunk which reads ambiguously on its own still embeds close to queries about the topic it actually belongs to."
     ],
-    "generated_answer": "Late chunking is a strategy where the whole document is first encoded into token\u2011level embeddings, and only after that are those embeddings pooled (e.g., averaged or summed) to form the vectors for individual chunks. Because the token embeddings were created with the entire document\u2019s context, each resulting chunk vector still reflects information from the rest of the document.\n\nKeeping document\u2011level context in every chunk is important because a chunk taken out of its surroundings can be ambiguous or incomplete. By preserving the broader context in the chunk\u2019s embedding, the chunk can be matched more accurately to queries (the \u201ccontextual embeddings\u201d effect) and later provide the language model with richer, more relevant background when the parent\u2011child retrieval scheme returns the chunk. This improves retrieval precision and downstream generation quality.",
+    "generated_answer": "Late chunking is a two\u2011step approach: first an encoder creates token\u2011level embeddings for the whole document, then those token vectors are pooled to form the chunk vectors. Because the token embeddings were produced with the entire document as input, each resulting chunk vector retains information about the rest of the document. Keeping this document\u2011level context in every chunk ensures that even small, isolated chunks are semantically enriched by the surrounding text, so they can be matched to queries accurately and provide the language model with richer, disambiguated context.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -118,7 +118,7 @@
       "Late chunking generates token-level embeddings for an entire document first, then pools them into chunk vectors afterward, so each chunk's embedding still carries context from the rest of the document.",
       "Fixed-size chunking splits a document into chunks of a set number of tokens or words with a small overlap between consecutive chunks, and is the simplest chunking strategy to implement though not the most topically coherent."
     ],
-    "generated_answer": "Parent\u2011child chunking creates two layers of text:\n\n* **Child chunks** \u2013 small, focused pieces that are indexed for similarity search, giving highly precise matches to the query.  \n* **Parent chunk** \u2013 a larger surrounding segment that is linked to each child and is returned to the language model, providing the broader context that the child alone lacks.\n\nThus the retrieval step uses the precise child embeddings, while the generation step receives the parent\u2019s fuller context, achieving both accurate matching and comprehensive understanding.",
+    "generated_answer": "Parent\u2011child chunking first breaks a document into many small **child** chunks, which are tiny enough to give very precise similarity matches during retrieval. Each child chunk also stores a reference to a larger **parent** chunk that contains the surrounding text. When a child chunk is selected, its parent is sent along to the language model, so the model sees the detailed match plus the broader context of the document. This way the system gets the exactness of fine\u2011grained retrieval while still providing the model with enough surrounding information to understand the content fully.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -136,7 +136,7 @@
       "Answer relevancy in RAG evaluation checks whether the generated answer actually addresses what the user asked, penalizing answers that are factually supported by the context but wander off topic.",
       "Context recall measures what fraction of the information needed to answer a question was actually present in the retrieved chunks, which caps the best possible answer quality regardless of how good the generator is."
     ],
-    "generated_answer": "To verify grounding, compare every claim in the generated answer against the retrieved passages:\n\n1. **Extract claims** \u2013 split the answer into discrete statements or facts.  \n2. **Locate supporting spans** \u2013 search the retrieved chunks for text that directly contains or entails each claim (string match, fuzzy match, or semantic similarity).  \n3. **Label support** \u2013 mark a claim as *grounded* only if a matching span is found; otherwise mark it ungrounded.  \n4. **Aggregate** \u2013 compute the proportion of grounded claims (or require 100\u202f%",
+    "generated_answer": "To verify that a generated answer is truly grounded in the retrieved passages, you can:\n\n1. **Claim\u2011to\u2011Context Alignment**  \n   - **Extract claims** from the answer (e.g., via sentence or span segmentation).  \n   - **Search** each claim in the retrieved text (keyword/semantic match).  \n   - **Confirm** that every factual statement has a supporting span in the context.\n\n2. **Entailment / Natural Language Inference (NLI)**  \n   - Treat each claim as a hypothesis and the retrieved chunk(s) as the premise.  \n   - Run an NLI model; a \u201centailed",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -154,7 +154,7 @@
       "Answer relevancy in RAG evaluation checks whether the generated answer actually addresses what the user asked, penalizing answers that are factually supported by the context but wander off topic.",
       "Faithfulness in RAG evaluation measures whether a generated answer's claims are actually supported by the retrieved context, independent of whether the answer happens to be factually true in the real world."
     ],
-    "generated_answer": "The metric is **Context recall**.",
+    "generated_answer": "Context recall.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -172,11 +172,11 @@
       "Faithfulness in RAG evaluation measures whether a generated answer's claims are actually supported by the retrieved context, independent of whether the answer happens to be factually true in the real world.",
       "Answer relevancy in RAG evaluation checks whether the generated answer actually addresses what the user asked, penalizing answers that are factually supported by the context but wander off topic."
     ],
-    "generated_answer": "Because a short query\u2019s embedding is often too generic to pull the most relevant passages. By first prompting the model to produce a \u201chypothetical\u201d answer (a fake answer), the system creates a longer, answer\u2011styled text that lies nearer in the embedding space to the true answer passages. Embedding this fabricated answer rather than the raw question yields better matches during retrieval. This is the core idea behind HyDE (hypothetical document embeddings).",
+    "generated_answer": "Because answer\u2011styled text lies nearer to the kinds of passages the system will later retrieve. By first having the model hallucinate a plausible answer and embedding that instead of the brief question, the embedding is more \u201canswer\u2011like\u201d and thus more likely to match the true answer passages in the vector space, improving retrieval quality.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
-    "context_relevancy": null,
+    "context_relevancy": 0.98,
     "context_recall": null
   },
   {
@@ -190,11 +190,11 @@
       "Step-back prompting asks a language model to first produce a more general or abstract version of a question before answering the specific one, which can surface background context that the specific question alone would miss.",
       "Cross-encoder rerankers take a query and a candidate passage together as a single input to a transformer, letting attention flow between them, which usually produces more accurate relevance scores than comparing two independently computed embeddings."
     ],
-    "generated_answer": "Rephrasing the query into several differently worded versions creates multiple \u201centry points\u201d into the collection. Each version is likely to use vocabularies or expressions that appear in some documents even if the original wording does not. By retrieving separately for each version and then merging the result lists, the system captures relevant passages that would be missed by a single phrasing, thereby improving recall and overall retrieval quality.",
+    "generated_answer": "Rephrasing the query into multiple, differently worded versions lets the system search with several vocabularies and phrasings. Each version is retrieved independently, so if the original wording doesn\u2019t match the terms used in the documents, another version may. Merging the results from all versions therefore yields a richer, more complete set of relevant passages.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
-    "context_relevancy": null,
+    "context_relevancy": 0.98,
     "context_recall": null
   },
   {
@@ -208,11 +208,11 @@
       "Multi-query expansion asks a language model to rewrite one query into several differently phrased versions, retrieves for each version separately, and merges the result lists, which helps when the original phrasing doesn't match the vocabulary used in the source documents.",
       "Answer relevancy in RAG evaluation checks whether the generated answer actually addresses what the user asked, penalizing answers that are factually supported by the context but wander off topic."
     ],
-    "generated_answer": "Asking a broader, more abstract question first helps surface the relevant background context that a narrowly\u2011phrased query might miss, enabling the model to generate a more informed and accurate answer to the specific question.",
+    "generated_answer": "It helps surface the broader background context that a narrow question might miss, giving the model a richer understanding before it tackles the specific query.",
     "strategy": "semantic",
     "faithfulness": null,
-    "answer_relevancy": null,
-    "context_relevancy": null,
+    "answer_relevancy": 0.95,
+    "context_relevancy": 0.95,
     "context_recall": null
   },
   {
@@ -226,7 +226,7 @@
       "Dense retrieval encodes both queries and documents into the same vector space using a neural embedding model, then ranks documents by cosine similarity or dot product to the query vector.",
       "Context recall measures what fraction of the information needed to answer a question was actually present in the retrieved chunks, which caps the best possible answer quality regardless of how good the generator is."
     ],
-    "generated_answer": "The system examines the incoming query with a **routing model**\u2014typically a lightweight classifier or a prompted language model.  \nBased on learned patterns (e.g., keywords, domain cues, question type, required specificity), the router predicts which retrieval method or data source is most appropriate (e.g., dense vector search, sparse keyword search, specialised index). It then forwards the query to that chosen pipeline rather than applying a single, fixed retrieval process to every question.",
+    "generated_answer": "A system first runs the query through a **router** \u2013 typically a trained classifier or a prompted language model. The router examines the question\u2019s content and, based on learned patterns (or prompting rules), predicts which retrieval strategy or data source is most appropriate (e.g., dense vector search, keyword search, a specific knowledge base, etc.). That decision determines the retrieval approach used for that query.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -244,11 +244,11 @@
       "Fixed-size chunking splits a document into chunks of a set number of tokens or words with a small overlap between consecutive chunks, and is the simplest chunking strategy to implement though not the most topically coherent.",
       "Parent-child chunking splits a document into small child chunks for precise retrieval matching, while keeping a link to a larger parent chunk that gets returned to the language model for fuller context."
     ],
-    "generated_answer": "Use **semantic chunking**: compute an embedding for each sentence (or small passage), then measure similarity between consecutive embeddings. Whenever the similarity drops sharply\u2014indicating a topic shift\u2014place a chunk boundary there. This creates chunks that are topically coherent rather than being limited to a fixed token or character count. Fixed\u2011size chunking simply slices the text by a set length, while semantic chunking lets the content dictate the splits. You can further organize the resulting chunks into a **parent\u2011child** hierarchy\u2014small \u201cchild\u201d chunks for precise retrieval and larger \u201cparent\u201d chunks that preserve",
+    "generated_answer": "Use **semantic chunking**:\n\n1. **Embed each sentence** (or short paragraph) with a language\u2011model encoder.  \n2. **Compute similarity** (e.g., cosine) between the embedding of sentence\u202f*i* and sentence\u202f*i\u202f+\u202f1*.  \n3. **Detect a topic shift** when the similarity drops sharply\u2014i.e., falls below a chosen threshold or shows a large relative decline.  \n4. **Insert a chunk boundary** at that point.  \n\nThe resulting chunks contain sentences that stay topically coherent, unlike fixed\u2011size chunks that split arbitrarily.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
-    "context_relevancy": null,
+    "context_relevancy": 0.95,
     "context_recall": null
   },
   {
@@ -262,7 +262,7 @@
       "A knowledge graph represents facts as triples of subject, relation, and object, allowing multi-hop questions to be answered by traversing edges between entities rather than searching raw text.",
       "GraphRAG combines a knowledge graph with vector retrieval so that a system can answer multi-hop questions that require connecting facts across several documents, not just questions answerable from a single passage."
     ],
-    "generated_answer": "Entity linking.",
+    "generated_answer": "The step is **entity linking** \u2013 mapping the mentioned name or term to the corresponding node in the knowledge graph.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -280,7 +280,7 @@
       "Dense retrieval encodes both queries and documents into the same vector space using a neural embedding model, then ranks documents by cosine similarity or dot product to the query vector.",
       "Cross-encoder rerankers take a query and a candidate passage together as a single input to a transformer, letting attention flow between them, which usually produces more accurate relevance scores than comparing two independently computed embeddings."
     ],
-    "generated_answer": "Fast approximate vector search methods sacrifice a small amount of recall\u2014i.e., they may miss some true nearest neighbors\u2014in exchange for much faster query latency compared to exhaustive (brute\u2011force) search.",
+    "generated_answer": "Fast approximate vector search methods trade a small loss in recall (potentially missing some true nearest neighbors) for large gains in query speed.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -298,7 +298,7 @@
       "Faithfulness in RAG evaluation measures whether a generated answer's claims are actually supported by the retrieved context, independent of whether the answer happens to be factually true in the real world.",
       "Context recall measures what fraction of the information needed to answer a question was actually present in the retrieved chunks, which caps the best possible answer quality regardless of how good the generator is."
     ],
-    "generated_answer": "Measure it with an **answer\u2011relevancy** metric: evaluate how well the generated text aligns with the user\u2019s original question, penalizing any response that,",
+    "generated_answer": "You gauge \u201con\u2011topicness\u201d with an **answer\u2011relevancy** metric: compare the generated response to the user\u2019s question and score how well it directly addresses that query. Any content that, even though factually backed by the retrieved passages, drifts away from the question is penal",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -316,11 +316,11 @@
       "Parent-child chunking splits a document into small child chunks for precise retrieval matching, while keeping a link to a larger parent chunk that gets returned to the language model for fuller context.",
       "Semantic chunking splits text at points where the embedding similarity between adjacent sentences drops sharply, aiming to keep each chunk topically coherent instead of cutting at a fixed number of characters."
     ],
-    "generated_answer": "The simplest way is **fixed\u2011size chunking**\u2014splitting the document into chunks of a set number of tokens or words (with a small overlap).",
+    "generated_answer": "The simplest way is **fixed\u2011size chunking**, which divides the document into equally sized chunks (by tokens or words) with a small overlap.",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
-    "context_relevancy": null,
+    "context_relevancy": 0.95,
     "context_recall": null
   },
   {
@@ -334,7 +334,7 @@
       "GraphRAG combines a knowledge graph with vector retrieval so that a system can answer multi-hop questions that require connecting facts across several documents, not just questions answerable from a single passage.",
       "Faithfulness in RAG evaluation measures whether a generated answer's claims are actually supported by the retrieved context, independent of whether the answer happens to be factually true in the real world."
     ],
-    "generated_answer": "By representing information as a knowledge graph, each fact becomes a subject\u2011relation\u2011object triple. A multi\u2011hop question can then be solved by traversing the graph: the system follows edges from one entity to the next, chaining together the required triples until it reaches the answer. GraphRAG enhances this by first retrieving relevant passages with dense vector search, extracting entities and relations to augment the graph, and then performing the multi\u2011step traversal. This lets the system synthesize answers that depend on several linked facts spread across different documents, rather than relying on a single passage.",
+    "generated_answer": "By representing information as a knowledge graph (subject\u2011relation\u2011object triples) and traversing its edges, a system can follow multiple hops to connect related facts.\u202fGraphRAG extends this by coupling the graph with vector\u2011based document retrieval, allowing it to pull relevant passages from several sources and then link their facts via the graph, thus answering multi\u2011hop questions that require stitching together information from",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
@@ -352,7 +352,7 @@
       "Contextual embeddings adjust a chunk's vector representation using surrounding document context, so that a chunk which reads ambiguously on its own still embeds close to queries about the topic it actually belongs to.",
       "Semantic chunking splits text at points where the embedding similarity between adjacent sentences drops sharply, aiming to keep each chunk topically coherent instead of cutting at a fixed number of characters."
     ],
-    "generated_answer": "By first encoding the entire document at the token level, the model captures relationships among all words. When those token embeddings are later pooled into a chunk vector (late\u2011chunking), the resulting chunk embedding retains information from the surrounding tokens, not just the isolated text.\u202fContextual embeddings then fine\u2011tune each chunk\u2019s vector using its neighboring sentences, so even an ambiguous snippet is placed near queries that match",
+    "generated_answer": "A text embedding can capture surrounding context by being built from the whole document rather than in isolation.  \n\n* **Late\u2011chunking:** First the model creates token\u2011level embeddings for the entire document. When those tokens are later pooled into a chunk vector, the chunk inherits information from all the other tokens, so its representation reflects what appears before and after it.  \n\n* **Contextual adjustment:** The chunk\u2019s vector is explicitly modified by the embeddings of the surrounding sentences or paragraphs. Thus, an ambiguous phrase is positioned in the vector space near queries that match the *actual* topic it belongs to, not the literal",
     "strategy": "semantic",
     "faithfulness": null,
     "answer_relevancy": null,
