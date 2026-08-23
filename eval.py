@@ -3,20 +3,30 @@
 """
 RAGBench Evaluation Runner
 
-Compares semantic chunking vs parent-child chunking using:
+Compares:
+    1. Semantic chunking
+    2. Parent-child chunking
 
-- Retrieval metrics from the benchmark's relevant_ids:
-  Hit@1, Hit@3, MRR
+Retrieval metrics:
+    - Hit@1
+    - Hit@3
+    - MRR
 
-- LLM-based generation metrics using Groq:
-  Faithfulness and Answer Relevancy
+Generation metrics:
+    - Faithfulness
+    - Answer Relevancy
 
-The benchmark does not contain reference answers, so
-Context Precision and Context Recall are not used.
+Default:
+    python eval.py
+
+Full benchmark:
+    RUN_FULL_EVAL=1 python eval.py
 """
 
 import json
 import os
+import re
+import time
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -26,6 +36,31 @@ from groq import Groq
 from sentence_transformers import SentenceTransformer
 
 
+# ============================================================
+# CONFIG
+# ============================================================
+
+PARENT_CHILD_FAILED_IDS = [
+    "q_08",
+    "q_09",
+    "q_13",
+    "q_14",
+    "q_17",
+]
+
+MODEL_NAME = "openai/gpt-oss-120b"
+
+RESULTS_DIR = "results"
+
+PARENT_CHILD_RESULTS = (
+    f"{RESULTS_DIR}/results_parent-child.json"
+)
+
+
+# ============================================================
+# CHUNKING CONFIG
+# ============================================================
+
 @dataclass
 class ChunkingConfig:
     name: str
@@ -34,6 +69,10 @@ class ChunkingConfig:
     overlap: int
 
 
+# ============================================================
+# RAG EVALUATOR
+# ============================================================
+
 class RAGEvaluator:
 
     def __init__(
@@ -41,8 +80,6 @@ class RAGEvaluator:
         corpus_path: str = "corpus.json",
         queries_path: str = "test_queries.json",
     ):
-        """Initialize evaluator with corpus and test queries."""
-
         self.corpus = self._load_json(corpus_path)
         self.queries = self._load_json(queries_path)
 
@@ -50,13 +87,16 @@ class RAGEvaluator:
 
         if not groq_api_key:
             raise RuntimeError(
-                "GROQ_API_KEY is not set. "
-                "Export it before running eval.py."
+                "GROQ_API_KEY is not set.\n"
+                "Run:\n"
+                "export GROQ_API_KEY='your_key'"
             )
 
         self.groq_client = Groq(
             api_key=groq_api_key
         )
+
+        print("Loading embedding model...")
 
         self.embeddings_model = SentenceTransformer(
             "all-MiniLM-L6-v2"
@@ -64,30 +104,39 @@ class RAGEvaluator:
 
         self.chroma_client = chromadb.Client()
 
-        print(f"✅ Loaded {len(self.corpus)} documents")
-        print(f"✅ Loaded {len(self.queries)} test queries")
+        print(
+            f"✅ Loaded {len(self.corpus)} documents"
+        )
+
+        print(
+            f"✅ Loaded {len(self.queries)} test queries"
+        )
+
+    # ========================================================
+    # JSON
+    # ========================================================
 
     @staticmethod
     def _load_json(path: str) -> Any:
-        """Load JSON file."""
-
-        with open(path, "r", encoding="utf-8") as f:
+        with open(
+            path,
+            "r",
+            encoding="utf-8",
+        ) as f:
             return json.load(f)
+
+    # ========================================================
+    # SEMANTIC CHUNKING
+    # ========================================================
 
     def chunk_corpus_semantic(
         self,
     ) -> Dict[str, Dict[str, Any]]:
-        """
-        Semantic chunking.
-
-        For this benchmark implementation each source document
-        remains one chunk. The source document ID is retained
-        in metadata.
-        """
 
         chunks: Dict[str, Dict[str, Any]] = {}
 
         for doc in self.corpus:
+
             doc_id = doc["doc_id"]
             content = doc["content"]
 
@@ -104,16 +153,14 @@ class RAGEvaluator:
 
         return chunks
 
+    # ========================================================
+    # PARENT-CHILD CHUNKING
+    # ========================================================
+
     def chunk_corpus_parent_child(
         self,
         sentences_per_child: int = 2,
     ) -> Dict[str, Dict[str, Any]]:
-        """
-        Parent-child chunking.
-
-        Parent = full source document.
-        Children = chunks containing two sentences.
-        """
 
         chunks: Dict[str, Dict[str, Any]] = {}
 
@@ -135,7 +182,11 @@ class RAGEvaluator:
                 "type": "parent",
             }
 
-            sentences = content.split(". ")
+            # Correct sentence splitting
+            sentences = re.split(
+                r"(?<=[.!?])\s+",
+                content.strip(),
+            )
 
             for i in range(
                 0,
@@ -147,24 +198,25 @@ class RAGEvaluator:
                     i:i + sentences_per_child
                 ]
 
-                child_content = ". ".join(
+                child_content = " ".join(
                     child_sentences
+                ).strip()
+
+                if not child_content:
+                    continue
+
+                child_id = (
+                    f"{doc_id}_child_"
+                    f"{i // sentences_per_child}"
                 )
 
-                if child_content.strip():
-
-                    child_id = (
-                        f"{doc_id}_child_"
-                        f"{i // sentences_per_child}"
-                    )
-
-                    chunks[child_id] = {
-                        "content": child_content,
-                        "source_doc": doc_id,
-                        "strategy": "parent-child",
-                        "type": "child",
-                        "parent_id": parent_id,
-                    }
+                chunks[child_id] = {
+                    "content": child_content,
+                    "source_doc": doc_id,
+                    "strategy": "parent-child",
+                    "type": "child",
+                    "parent_id": parent_id,
+                }
 
             parent_chunk_id += 1
 
@@ -175,12 +227,15 @@ class RAGEvaluator:
 
         return chunks
 
+    # ========================================================
+    # CHROMADB
+    # ========================================================
+
     def build_retriever(
         self,
         chunks: Dict[str, Dict[str, Any]],
         collection_name: str,
     ) -> Any:
-        """Build a ChromaDB collection for retrieval."""
 
         try:
             self.chroma_client.delete_collection(
@@ -189,23 +244,32 @@ class RAGEvaluator:
         except Exception:
             pass
 
-        collection = self.chroma_client.create_collection(
-            name=collection_name
+        collection = (
+            self.chroma_client.create_collection(
+                name=collection_name
+            )
         )
 
-        chunk_ids: List[str] = []
-        chunk_contents: List[str] = []
-        chunk_metadatas: List[Dict[str, str]] = []
+        chunk_ids = []
+        chunk_contents = []
+        chunk_metadatas = []
 
         for chunk_id, chunk_data in chunks.items():
 
             chunk_ids.append(chunk_id)
-            chunk_contents.append(chunk_data["content"])
+
+            chunk_contents.append(
+                chunk_data["content"]
+            )
 
             chunk_metadatas.append(
                 {
-                    "source_doc": chunk_data["source_doc"],
-                    "strategy": chunk_data["strategy"],
+                    "source_doc": chunk_data[
+                        "source_doc"
+                    ],
+                    "strategy": chunk_data[
+                        "strategy"
+                    ],
                 }
             )
 
@@ -230,21 +294,16 @@ class RAGEvaluator:
 
         return collection
 
+    # ========================================================
+    # RETRIEVAL
+    # ========================================================
+
     def retrieve(
         self,
         query: str,
         collection: Any,
         top_k: int = 3,
     ) -> Dict[str, List[str]]:
-        """
-        Retrieve top-k chunks.
-
-        Returns chunk IDs and source document IDs.
-
-        This matters because test_queries.json labels relevance
-        at source-document level, while parent-child retrieval
-        returns child chunk IDs.
-        """
 
         query_embedding = (
             self.embeddings_model
@@ -255,7 +314,10 @@ class RAGEvaluator:
         results = collection.query(
             query_embeddings=[query_embedding],
             n_results=top_k,
-            include=["documents", "metadatas"],
+            include=[
+                "documents",
+                "metadatas",
+            ],
         )
 
         documents = (
@@ -288,21 +350,26 @@ class RAGEvaluator:
             "source_doc_ids": source_doc_ids,
         }
 
+    # ========================================================
+    # GENERATE ANSWER
+    # ========================================================
+
     def generate_answer(
         self,
         query: str,
         context: List[str],
     ) -> str:
-        """Generate an answer using Groq from the retrieved context."""
 
         context_text = "\n\n".join(context)
 
         prompt = f"""
-Answer the following question based only on the provided context.
+Answer the following question using ONLY the
+provided context.
 
 Be concise, accurate, and faithful to the context.
 
-If the context does not contain enough information, say so.
+If the context does not contain enough information,
+say that the information is insufficient.
 
 Question:
 {query}
@@ -314,19 +381,163 @@ Answer:
 """
 
         response = (
-            self.groq_client.chat.completions.create(
-                model="openai/gpt-oss-120b",
+            self.groq_client
+            .chat.completions.create(
+                model=MODEL_NAME,
                 messages=[
                     {
                         "role": "user",
                         "content": prompt,
                     }
                 ],
-                max_completion_tokens=500,
+                max_completion_tokens=300,
             )
         )
 
-        return response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+
+        return content.strip() if content else ""
+
+    # ========================================================
+    # SCORE PARSER
+    # ========================================================
+
+    @staticmethod
+    def parse_score(raw: str) -> Optional[float]:
+
+        if not raw:
+            return None
+
+        text = raw.strip()
+
+        # Exact allowed values
+        if text in {
+            "0",
+            "0.25",
+            "0.5",
+            "0.75",
+            "1",
+            "1.0",
+        }:
+            return float(text)
+
+        # Look for a standalone allowed number
+        match = re.search(
+            r"(?<!\d)(1(?:\.0+)?|0(?:\.(?:25|5|75))?)(?!\d)",
+            text,
+        )
+
+        if match:
+            return float(match.group(1))
+
+        return None
+
+    # ========================================================
+    # SINGLE METRIC JUDGE
+    # ========================================================
+
+    def judge_metric(
+        self,
+        metric_name: str,
+        criteria: str,
+        query: str,
+        context: List[str],
+        answer: str,
+    ) -> Optional[float]:
+
+        context_text = "\n\n".join(context)
+
+        prompt = f"""
+You are evaluating a RAG system.
+
+QUESTION:
+{query}
+
+RETRIEVED CONTEXT:
+{context_text}
+
+GENERATED ANSWER:
+{answer}
+
+METRIC:
+{metric_name}
+
+CRITERIA:
+{criteria}
+
+Choose exactly one score:
+
+0
+0.25
+0.5
+0.75
+1
+
+Return ONLY the score.
+Do not explain.
+Do not use JSON.
+Do not use Markdown.
+Do not write any other text.
+
+Your response:
+"""
+
+        try:
+            response = (
+                self.groq_client
+                .chat.completions.create(
+                    model=MODEL_NAME,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "Return exactly one number: "
+                                "0, 0.25, 0.5, 0.75, or 1."
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt,
+                        },
+                    ],
+                    max_completion_tokens=20,
+                    temperature=0,
+                )
+            )
+
+            message = response.choices[0].message
+
+            raw = (
+                message.content
+                if message.content
+                else ""
+            )
+
+            raw = raw.strip()
+
+            print(
+                f"      {metric_name}: {raw!r}"
+            )
+
+            score = self.parse_score(raw)
+
+            if score is not None:
+                return max(
+                    0.0,
+                    min(1.0, score),
+                )
+
+        except Exception as e:
+
+            print(
+                f"      ⚠️ {metric_name} judge error: {e}"
+            )
+
+        return None
+
+    # ========================================================
+    # RAG JUDGE
+    # ========================================================
 
     def evaluate_rag_pair(
         self,
@@ -334,178 +545,57 @@ Answer:
         context: List[str],
         answer: str,
     ) -> Dict[str, Optional[float]]:
-        """
-        Evaluate the generated answer using Groq as an LLM judge.
 
-        Faithfulness:
-            Measures whether the answer is supported by the retrieved context.
+        faithfulness = self.judge_metric(
+            metric_name="faithfulness",
+            criteria="""
+Score 1 when every factual claim in the answer
+is directly supported by the retrieved context.
 
-        Answer relevancy:
-            Measures whether the answer actually addresses the question.
+Score 0.75 when almost all claims are supported
+and there is only a minor unsupported detail.
 
-        Scores are normalized to [0, 1].
-        """
+Score 0.5 when some important claims are supported
+but other claims are unsupported.
 
-        context_text = "\n\n".join(context)
+Score 0.25 when most claims are unsupported.
 
-        try:
-
-            # ---------------------------------------------------------
-            # FAITHFULNESS
-            # ---------------------------------------------------------
-
-            faithfulness_prompt = f"""
-You are evaluating a RAG system.
-
-Determine whether the generated answer is fully supported
-by the retrieved context.
-
-Question:
-{query}
-
-Retrieved Context:
-{context_text}
-
-Generated Answer:
-{answer}
-
-Give a score from 0 to 1.
-
-1.0 = Every factual claim in the answer is supported by the context.
-0.75 = Mostly supported, with a small unsupported detail.
-0.50 = Partially supported.
-0.25 = Mostly unsupported.
-0.0 = Completely unsupported or contradicted.
-
-Return ONLY the numeric score.
-"""
-
-            faith_response = (
-                self.groq_client.chat.completions.create(
-                    model="openai/gpt-oss-120b",
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are a strict RAG evaluation judge. "
-                                "Return only a number between 0 and 1."
-                            ),
-                        },
-                        {
-                            "role": "user",
-                            "content": faithfulness_prompt,
-                        },
-                    ],
-                    temperature=0,
-        max_completion_tokens=256,
-        reasoning_effort="low",
-        include_reasoning=False,
-                )
-            )
-
-            faithfulness_score = self._parse_score(
-                faith_response.choices[0].message.content
-            )
-
-            # ---------------------------------------------------------
-            # ANSWER RELEVANCY
-            # ---------------------------------------------------------
-
-            relevancy_prompt = f"""
-You are evaluating a RAG system.
-
-Determine how directly the generated answer answers
-the user's question.
-
-Question:
-{query}
-
-Generated Answer:
-{answer}
-
-Give a score from 0 to 1.
-
-1.0 = Directly and completely answers the question.
-0.75 = Directly answers it but misses a minor point.
-0.50 = Partially answers the question.
-0.25 = Barely addresses the question.
-0.0 = Does not answer the question.
-
-Do NOT judge factual correctness here.
-Judge only how relevant the answer is to the question.
-
-Return ONLY the numeric score.
-"""
-
-            relevancy_response = (
-                self.groq_client.chat.completions.create(
-                    model="openai/gpt-oss-120b",
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are a strict answer-relevancy judge. "
-                                "Return only a number between 0 and 1."
-                            ),
-                        },
-                        {
-                            "role": "user",
-                            "content": relevancy_prompt,
-                        },
-                    ],
-                     temperature=0,
-        max_completion_tokens=256,
-        reasoning_effort="low",
-        include_reasoning=False,
-                )
-            )
-
-            answer_relevancy_score = self._parse_score(
-                relevancy_response.choices[0].message.content
-            )
-
-            return {
-                "faithfulness": faithfulness_score,
-                "answer_relevancy": answer_relevancy_score,
-            }
-
-        except Exception as e:
-
-            print(
-                f"⚠️ LLM evaluation failed for "
-                f"query '{query[:50]}...': {e}"
-            )
-
-            return {
-                "faithfulness": None,
-                "answer_relevancy": None,
-            }
-
-    @staticmethod
-    def _parse_score(value: str) -> float:
-        """
-        Extract a numeric score from an LLM response
-        and clamp it to [0, 1].
-        """
-
-        import re
-
-        match = re.search(
-            r"\b(?:0(?:\.\d+)?|1(?:\.0+)?)\b",
-            value.strip(),
+Score 0 when the answer is unsupported or
+contradicts the retrieved context.
+""",
+            query=query,
+            context=context,
+            answer=answer,
         )
 
-        if not match:
-            raise ValueError(
-                f"Could not parse evaluation score: {value}"
-            )
+        answer_relevancy = self.judge_metric(
+            metric_name="answer_relevancy",
+            criteria="""
+Score 1 when the answer directly and completely
+answers the user's question.
 
-        score = float(match.group())
+Score 0.75 when it answers the question with
+only a minor omission.
 
-        return min(
-            1.0,
-            max(0.0, score),
+Score 0.5 when it partially answers the question.
+
+Score 0.25 when it barely addresses the question.
+
+Score 0 when it does not answer the question.
+""",
+            query=query,
+            context=context,
+            answer=answer,
         )
+
+        return {
+            "faithfulness": faithfulness,
+            "answer_relevancy": answer_relevancy,
+        }
+
+    # ========================================================
+    # RETRIEVAL METRICS
+    # ========================================================
 
     @staticmethod
     def evaluate_retrieval(
@@ -513,13 +603,6 @@ Return ONLY the numeric score.
         retrieved_source_doc_ids: List[str],
         top_k: int = 3,
     ) -> Dict[str, float]:
-        """
-        Evaluate retrieval against test_queries.json relevant_ids.
-
-        - Hit@1: relevant source document is ranked first.
-        - Hit@3: relevant source document appears in top 3.
-        - MRR: reciprocal rank of the first relevant source document.
-        """
 
         relevant_set = set(relevant_ids)
 
@@ -527,7 +610,8 @@ Return ONLY the numeric score.
             1.0
             if (
                 retrieved_source_doc_ids
-                and retrieved_source_doc_ids[0] in relevant_set
+                and retrieved_source_doc_ids[0]
+                in relevant_set
             )
             else 0.0
         )
@@ -557,15 +641,23 @@ Return ONLY the numeric score.
             "mrr": reciprocal_rank,
         }
 
+    # ========================================================
+    # FULL EVALUATION
+    # ========================================================
+
     def run_evaluation(
         self,
         config: ChunkingConfig,
         top_k: int = 3,
+        resume: bool = True,
     ) -> List[Dict[str, Any]]:
-        """Run full evaluation for one chunking strategy."""
 
         print("\n" + "=" * 60)
-        print(f"🚀 Evaluating: {config.name}")
+
+        print(
+            f"🚀 Evaluating: {config.name}"
+        )
+
         print("=" * 60)
 
         if config.strategy == "semantic":
@@ -575,18 +667,81 @@ Return ONLY the numeric score.
 
         collection = self.build_retriever(
             chunks,
-            collection_name=config.name,
+            config.name,
         )
 
-        results: List[Dict[str, Any]] = []
+        output_file = (
+            f"{RESULTS_DIR}/"
+            f"results_{config.strategy}.json"
+        )
 
-        for i, test_query in enumerate(self.queries):
+        results = []
+        completed_ids = set()
+
+        if resume and os.path.exists(output_file):
+
+            try:
+
+                with open(
+                    output_file,
+                    "r",
+                    encoding="utf-8",
+                ) as f:
+                    previous = json.load(f)
+
+                if isinstance(previous, list):
+
+                    results = previous
+
+                    completed_ids = {
+                        r.get("query_id")
+                        for r in results
+                        if (
+                            r.get("faithfulness")
+                            is not None
+                            and
+                            r.get("answer_relevancy")
+                            is not None
+                        )
+                    }
+
+                    print(
+                        f"↩️ Resuming: "
+                        f"{len(results)} saved queries"
+                    )
+
+            except Exception as e:
+
+                print(
+                    f"⚠️ Could not load "
+                    f"previous results: {e}"
+                )
+
+        for i, test_query in enumerate(
+            self.queries
+        ):
+
+            query_id = test_query["query_id"]
+
+            if query_id in completed_ids:
+
+                print(
+                    f"\n[{i + 1}/"
+                    f"{len(self.queries)}] "
+                    f"{query_id} SKIPPED"
+                )
+
+                continue
 
             query = test_query["query"]
-            relevant_ids = test_query["relevant_ids"]
+
+            relevant_ids = test_query[
+                "relevant_ids"
+            ]
 
             print(
-                f"\n[{i + 1}/{len(self.queries)}] "
+                f"\n[{i + 1}/"
+                f"{len(self.queries)}] "
                 f"{query[:60]}..."
             )
 
@@ -596,16 +751,22 @@ Return ONLY the numeric score.
                 top_k=top_k,
             )
 
-            retrieved_context = retrieved["documents"]
+            retrieved_context = retrieved[
+                "documents"
+            ]
+
             retrieved_ids = retrieved["ids"]
+
             retrieved_source_doc_ids = (
                 retrieved["source_doc_ids"]
             )
 
-            retrieval_metrics = self.evaluate_retrieval(
-                relevant_ids,
-                retrieved_source_doc_ids,
-                top_k=top_k,
+            retrieval_metrics = (
+                self.evaluate_retrieval(
+                    relevant_ids,
+                    retrieved_source_doc_ids,
+                    top_k=top_k,
+                )
             )
 
             answer = self.generate_answer(
@@ -620,26 +781,33 @@ Return ONLY the numeric score.
             )
 
             result = {
-                "query_id": test_query["query_id"],
+                "query_id": query_id,
                 "query": query,
                 "relevant_ids": relevant_ids,
                 "retrieved_ids": retrieved_ids,
-                "retrieved_source_doc_ids": (
-                    retrieved_source_doc_ids
-                ),
-                "retrieved_context": retrieved_context,
+                "retrieved_source_doc_ids":
+                    retrieved_source_doc_ids,
+                "retrieved_context":
+                    retrieved_context,
                 "generated_answer": answer,
                 "strategy": config.strategy,
                 **retrieval_metrics,
                 **rag_metrics,
             }
 
-            results.append(result)
-
-            print(
-                f"   Retrieved source docs: "
-                f"{retrieved_source_doc_ids}"
+            existing_index = next(
+                (
+                    index
+                    for index, item in enumerate(results)
+                    if item.get("query_id") == query_id
+                ),
+                None,
             )
+
+            if existing_index is not None:
+                results[existing_index] = result
+            else:
+                results.append(result)
 
             print(
                 f"   Hit@1: "
@@ -656,100 +824,286 @@ Return ONLY the numeric score.
                 f"{retrieval_metrics['mrr']:.3f}"
             )
 
-            faith_score = rag_metrics["faithfulness"]
-            relevancy_score = rag_metrics["answer_relevancy"]
+            faith = rag_metrics["faithfulness"]
 
-            if faith_score is None:
-                print("   Faithfulness: FAILED")
-            else:
-                print(
-                    f"   Faithfulness: "
-                    f"{faith_score:.3f}"
-                )
+            relevancy = rag_metrics[
+                "answer_relevancy"
+            ]
 
-            if relevancy_score is None:
-                print("   Answer Relevancy: FAILED")
-            else:
-                print(
-                    f"   Answer Relevancy: "
-                    f"{relevancy_score:.3f}"
+            print(
+                f"   Faithfulness: "
+                f"{faith:.3f}"
+                if faith is not None
+                else
+                "   Faithfulness: FAILED"
+            )
+
+            print(
+                f"   Answer Relevancy: "
+                f"{relevancy:.3f}"
+                if relevancy is not None
+                else
+                "   Answer Relevancy: FAILED"
+            )
+
+            os.makedirs(
+                RESULTS_DIR,
+                exist_ok=True,
+            )
+
+            with open(
+                output_file,
+                "w",
+                encoding="utf-8",
+            ) as f:
+
+                json.dump(
+                    results,
+                    f,
+                    indent=2,
                 )
 
         return results
 
-    def save_results(
+    # ========================================================
+    # FINAL PARENT-CHILD REPAIR
+    # ========================================================
+
+    def retry_failed_parent_child(
         self,
-        results: List[Dict[str, Any]],
-        config: ChunkingConfig,
-    ) -> str:
-        """Save evaluation results to JSON."""
+        failed_query_ids: List[str],
+    ) -> List[Dict[str, Any]]:
 
-        output_file = (
-            f"results/"
-            f"results_{config.strategy}.json"
-        )
+        if not os.path.exists(
+            PARENT_CHILD_RESULTS
+        ):
 
-        os.makedirs(
-            "results",
-            exist_ok=True,
-        )
+            raise FileNotFoundError(
+                f"Could not find "
+                f"{PARENT_CHILD_RESULTS}"
+            )
 
         with open(
-            output_file,
-            "w",
+            PARENT_CHILD_RESULTS,
+            "r",
             encoding="utf-8",
         ) as f:
 
-            json.dump(
-                results,
-                f,
-                indent=2,
-            )
+            results = json.load(f)
 
-        print(
-            f"\n💾 Results saved to "
-            f"{output_file}"
+        target_ids = set(
+            failed_query_ids
         )
 
-        return output_file
+        print("\n" + "=" * 60)
 
+        print(
+            "🔧 FINAL PARENT-CHILD JUDGE REPAIR"
+        )
+
+        print("=" * 60)
+
+        print(
+            f"Target IDs: "
+            f"{sorted(target_ids)}"
+        )
+
+        attempted = 0
+        repaired = 0
+
+        for result in results:
+
+            query_id = result.get(
+                "query_id"
+            )
+
+            if query_id not in target_ids:
+                continue
+
+            if (
+                result.get("faithfulness")
+                is not None
+                and
+                result.get("answer_relevancy")
+                is not None
+            ):
+
+                print(
+                    f"\n✅ {query_id} "
+                    f"already repaired. Skipping."
+                )
+
+                continue
+
+            attempted += 1
+
+            print("\n" + "-" * 60)
+
+            print(
+                f"🔁 Evaluating {query_id}"
+            )
+
+            print(
+                f"Question: "
+                f"{result.get('query', '')}"
+            )
+
+            context = result.get(
+                "retrieved_context",
+                [],
+            )
+
+            answer = result.get(
+                "generated_answer",
+                "",
+            )
+
+            if not context:
+
+                print(
+                    "⚠️ No stored context."
+                )
+
+                continue
+
+            if not answer:
+
+                print(
+                    "⚠️ No stored answer."
+                )
+
+                continue
+
+            print(
+                "   ♻️ Reusing stored "
+                "context and answer"
+            )
+
+            rag_metrics = self.evaluate_rag_pair(
+                result["query"],
+                context,
+                answer,
+            )
+
+            faith = rag_metrics[
+                "faithfulness"
+            ]
+
+            relevancy = rag_metrics[
+                "answer_relevancy"
+            ]
+
+            if faith is not None:
+                result["faithfulness"] = faith
+
+            if relevancy is not None:
+                result["answer_relevancy"] = relevancy
+
+            if (
+                faith is not None
+                and relevancy is not None
+            ):
+
+                repaired += 1
+
+                print(
+                    "   ✅ Both scores repaired"
+                )
+
+            else:
+
+                print(
+                    "   ⚠️ Judge failed to return "
+                    "both scores"
+                )
+
+            print(
+                f"   Faithfulness: "
+                f"{result.get('faithfulness')}"
+            )
+
+            print(
+                f"   Answer Relevancy: "
+                f"{result.get('answer_relevancy')}"
+            )
+
+            os.makedirs(
+                RESULTS_DIR,
+                exist_ok=True,
+            )
+
+            with open(
+                PARENT_CHILD_RESULTS,
+                "w",
+                encoding="utf-8",
+            ) as f:
+
+                json.dump(
+                    results,
+                    f,
+                    indent=2,
+                )
+
+            print("   💾 Saved")
+
+        print("\n" + "=" * 60)
+
+        print(
+            f"📌 Retry attempts: {attempted}"
+        )
+
+        print(
+            f"✅ Successfully repaired: {repaired}"
+        )
+
+        print("=" * 60)
+
+        return results
+
+
+# ============================================================
+# METRIC SUMMARY
+# ============================================================
 
 def print_metric_summary(
     strategy: str,
     results: List[Dict[str, Any]],
 ) -> None:
-    """Print averages without treating failed metrics as 0."""
 
-    print(f"\n{strategy.upper()}:")
+    print(
+        f"\n{strategy.upper()}:"
+    )
 
     metrics_dict = defaultdict(list)
 
-    for result in results:
-
-        for metric in (
-            "hit_at_1",
-            "hit_at_3",
-            "mrr",
-            "faithfulness",
-            "answer_relevancy",
-        ):
-
-            score = result.get(metric)
-
-            if score is not None:
-                metrics_dict[metric].append(
-                    float(score)
-                )
-
-    for metric in (
+    metrics = [
         "hit_at_1",
         "hit_at_3",
         "mrr",
         "faithfulness",
         "answer_relevancy",
-    ):
+    ]
 
-        scores = metrics_dict.get(metric, [])
+    for result in results:
+
+        for metric in metrics:
+
+            score = result.get(metric)
+
+            if score is not None:
+
+                metrics_dict[
+                    metric
+                ].append(
+                    float(score)
+                )
+
+    for metric in metrics:
+
+        scores = metrics_dict.get(
+            metric,
+            [],
+        )
 
         if not scores:
 
@@ -760,24 +1114,105 @@ def print_metric_summary(
 
             continue
 
-        avg_score = sum(scores) / len(scores)
-        min_score = min(scores)
-        max_score = max(scores)
+        average = (
+            sum(scores)
+            / len(scores)
+        )
 
-        print(f"  {metric}:")
+        print(
+            f"  {metric}:"
+        )
+
         print(
             f"    Average: "
-            f"{avg_score:.3f}"
+            f"{average:.3f}"
         )
 
         print(
-            f"    Min: {min_score:.3f} | "
-            f"Max: {max_score:.3f}"
+            f"    Min: "
+            f"{min(scores):.3f} | "
+            f"Max: "
+            f"{max(scores):.3f}"
+        )
+
+        print(
+            f"    Valid scores: "
+            f"{len(scores)}/{len(results)}"
         )
 
 
-def main():
-    """Run full evaluation comparing both chunking strategies."""
+# ============================================================
+# RETRY MODE
+# ============================================================
+
+def retry_mode():
+
+    evaluator = RAGEvaluator()
+
+    results = evaluator.retry_failed_parent_child(
+        PARENT_CHILD_FAILED_IDS
+    )
+
+    print("\n" + "=" * 60)
+
+    print(
+        "📊 UPDATED PARENT-CHILD RESULTS"
+    )
+
+    print("=" * 60)
+
+    print_metric_summary(
+        "parent-child",
+        results,
+    )
+
+    remaining_failures = [
+        r.get("query_id")
+        for r in results
+        if (
+            r.get("query_id")
+            in PARENT_CHILD_FAILED_IDS
+            and (
+                r.get("faithfulness") is None
+                or
+                r.get("answer_relevancy") is None
+            )
+        )
+    ]
+
+    print()
+
+    if remaining_failures:
+
+        print(
+            "⚠️ Still failed:"
+        )
+
+        for query_id in remaining_failures:
+
+            print(
+                f"   - {query_id}"
+            )
+
+        print(
+            "\nThese are judge failures, "
+            "not retrieval failures."
+        )
+
+    else:
+
+        print(
+            "🎉 All targeted "
+            "parent-child evaluations "
+            "are complete!"
+        )
+
+
+# ============================================================
+# FULL EVALUATION MODE
+# ============================================================
+
+def full_evaluation_mode():
 
     evaluator = RAGEvaluator()
 
@@ -796,40 +1231,129 @@ def main():
             chunk_size=256,
             overlap=50,
         ),
+
     ]
 
-    all_results: Dict[
-        str,
-        List[Dict[str, Any]]
-    ] = {}
+    all_results = {}
 
-    for config in configs:
+    # --------------------------------------------------------
+    # SEMANTIC
+    # --------------------------------------------------------
 
-        results = evaluator.run_evaluation(
-            config,
+    semantic_file = (
+        f"{RESULTS_DIR}/"
+        f"results_semantic.json"
+    )
+
+    rerun_semantic = (
+        os.getenv(
+            "RERUN_SEMANTIC",
+            "0",
+        )
+        == "1"
+    )
+
+    if (
+        os.path.exists(semantic_file)
+        and not rerun_semantic
+    ):
+
+        with open(
+            semantic_file,
+            "r",
+            encoding="utf-8",
+        ) as f:
+
+            semantic_results = json.load(f)
+
+        all_results["semantic"] = (
+            semantic_results
+        )
+
+        print(
+            f"↩️ Reusing existing "
+            f"semantic results: "
+            f"{len(semantic_results)} queries"
+        )
+
+    else:
+
+        semantic_results = evaluator.run_evaluation(
+            configs[0],
             top_k=3,
+            resume=True,
         )
 
-        all_results[config.strategy] = results
-
-        evaluator.save_results(
-            results,
-            config,
+        all_results["semantic"] = (
+            semantic_results
         )
+
+    # --------------------------------------------------------
+    # PARENT-CHILD
+    # --------------------------------------------------------
+
+    parent_results = evaluator.run_evaluation(
+        configs[1],
+        top_k=3,
+        resume=True,
+    )
+
+    all_results["parent-child"] = (
+        parent_results
+    )
+
+    # --------------------------------------------------------
+    # COMPARISON
+    # --------------------------------------------------------
 
     print("\n" + "=" * 60)
-    print("📊 RESULTS COMPARISON")
+
+    print(
+        "📊 RESULTS COMPARISON"
+    )
+
     print("=" * 60)
 
-    for strategy, results in all_results.items():
+    for strategy, results in (
+        all_results.items()
+    ):
 
         print_metric_summary(
             strategy,
             results,
         )
 
-    print("\n✅ Evaluation complete!")
+    print(
+        "\n✅ Evaluation complete!"
+    )
 
+
+# ============================================================
+# MAIN
+# ============================================================
+
+def main():
+
+    run_full_eval = (
+        os.getenv(
+            "RUN_FULL_EVAL",
+            "0",
+        )
+        == "1"
+    )
+
+    if run_full_eval:
+
+        full_evaluation_mode()
+
+    else:
+
+        retry_mode()
+
+
+# ============================================================
+# ENTRY POINT
+# ============================================================
 
 if __name__ == "__main__":
     main()
