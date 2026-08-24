@@ -1,340 +1,968 @@
-# RAGBench: Lightweight Evaluation Framework for RAG Systems
+# RAGBench
 
-A RAGAS-based benchmarking framework to evaluate and compare chunking strategies in Retrieval-Augmented Generation systems.
+**RAGBench** is a lightweight evaluation framework for benchmarking Retrieval-Augmented Generation (RAG) systems and comparing different chunking strategies.
 
-## What It Does
+The current benchmark compares:
 
-RAGBench compares **semantic chunking** vs **parent-child chunking** strategies using industry-standard RAGAS metrics:
+* **Semantic / document-level chunking**
+* **Parent-child chunking**
 
-- **Faithfulness**: Is the generated answer grounded in retrieved context?
-- **Answer Relevancy**: Does the answer address the query?
-- **Context Relevancy**: Are retrieved chunks on-topic?
-- **Context Recall**: Does retrieved context contain needed information?
+The framework evaluates both **retrieval quality** and **generated-answer quality** on a fixed test set.
 
-## Project Structure
+---
 
+## Overview
+
+Chunking has a major impact on RAG performance.
+
+A chunk that is too large may contain unnecessary information, while a chunk that is too small may lose the surrounding context needed to answer a question.
+
+RAGBench provides a controlled way to compare chunking strategies using the same:
+
+* Corpus
+* Evaluation queries
+* Embedding model
+* Retrieval configuration
+* Generation model
+* Evaluation process
+
+This makes it possible to measure how changes in chunking affect retrieval and answer quality.
+
+---
+
+## What RAGBench Evaluates
+
+The current evaluation pipeline produces five metrics.
+
+### Retrieval Metrics
+
+#### Hit@1
+
+Measures whether the first retrieved result is relevant to the query.
+
+A score of `1.0` means the relevant result was ranked first for every evaluated query.
+
+#### Hit@3
+
+Measures whether a relevant result appears within the top three retrieved results.
+
+A score of `1.0` means every query had a relevant result in the top three.
+
+#### Mean Reciprocal Rank (MRR)
+
+MRR measures how highly the first relevant result is ranked.
+
+Higher MRR means relevant information tends to appear closer to the top of the retrieval results.
+
+---
+
+### Generation Metrics
+
+#### Faithfulness
+
+Measures whether the generated answer is supported by the retrieved context.
+
+A high score indicates that the model is producing answers grounded in the retrieved information rather than introducing unsupported claims.
+
+#### Answer Relevancy
+
+Measures whether the generated answer directly addresses the user's question.
+
+A high score indicates that the answer is focused and relevant to the query.
+
+---
+
+## Current Metrics
+
+The current version of `eval.py` produces:
+
+```text
+Retrieval:
+- hit_at_1
+- hit_at_3
+- mrr
+
+Generation:
+- faithfulness
+- answer_relevancy
 ```
+
+### Metrics Not Currently Produced
+
+The current pipeline does **not** produce:
+
+* `context_relevancy`
+* `context_recall`
+
+These metrics are therefore intentionally excluded from the current analysis report.
+
+They may be added in a future version.
+
+---
+
+# Project Structure
+
+```text
 ragbench/
-├── corpus.json              # 20 RAG concept documents
-├── test_queries.json        # 20 evaluation queries with expected sources
-├── eval.py                  # Main evaluation runner
-├── analyze_results.py       # Results comparison & reporting
-├── requirements.txt         # Python dependencies
-├── results/
-│   ├── results_semantic.json
-│   ├── results_parent-child.json
-│   ├── query_analysis.json
-│   └── EVALUATION_REPORT.md
-└── README.md
+│
+├── corpus.json
+├── test_queries.json
+├── eval.py
+├── analyze_results.py
+├── requirements.txt
+├── README.md
+│
+└── results/
+    ├── results_semantic.json
+    ├── results_parent-child.json
+    ├── query_analysis.json
+    └── EVALUATION_REPORT.md
 ```
 
-## Installation
+### Files
 
-### 1. Install Dependencies
+| File                                | Purpose                                                         |
+| ----------------------------------- | --------------------------------------------------------------- |
+| `corpus.json`                       | Evaluation corpus containing 20 RAG-related documents           |
+| `test_queries.json`                 | 20 benchmark queries and their expected relevant document IDs   |
+| `eval.py`                           | Runs retrieval, generation, and evaluation                      |
+| `analyze_results.py`                | Compares the two strategies and generates the evaluation report |
+| `requirements.txt`                  | Python dependencies                                             |
+| `results/results_semantic.json`     | Raw Semantic strategy results                                   |
+| `results/results_parent-child.json` | Raw Parent-Child strategy results                               |
+| `results/query_analysis.json`       | Per-query comparison                                            |
+| `results/EVALUATION_REPORT.md`      | Final benchmark report                                          |
+
+---
+
+# Installation
+
+## 1. Clone the Repository
+
+```bash
+git clone https://github.com/GulrezQayyum/ragbench.git
+cd ragbench
+```
+
+## 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Dependencies:
-- `groq` — LLM API for generation & scoring
-- `chromadb` — Vector database for retrieval
-- `sentence-transformers` — Embedding model (all-MiniLM-L6-v2)
-- `ragas` — Evaluation metrics
-- `datasets` — RAGAS dataset format
-- `pandas` — Data processing
-- `python-dotenv` — Environment variable management
+The project uses the following main dependencies:
 
-### 2. Set API Keys
+* `groq` — LLM generation and evaluation
+* `chromadb` — vector storage and similarity retrieval
+* `sentence-transformers` — embedding generation
+* `ragas` — RAG evaluation
+* `datasets` — evaluation dataset handling
+* `pandas` — result processing
+* `python-dotenv` — environment variable management
+
+---
+
+# API Configuration
+
+RAGBench uses Groq for LLM-based generation and evaluation.
+
+Set your API key as an environment variable:
 
 ```bash
 export GROQ_API_KEY="your_groq_api_key"
 ```
 
-Or create `.env` file:
-```
+Alternatively, create a `.env` file:
+
+```env
 GROQ_API_KEY=your_groq_api_key
 ```
 
-## Usage
+Do not commit your API key to GitHub.
 
-### Run Full Evaluation
+---
+
+# Running the Benchmark
+
+## Run Evaluation
+
+Run:
 
 ```bash
 python eval.py
 ```
 
-This will:
-1. Load corpus (20 documents)
-2. Load test queries (20 questions)
-3. Apply semantic chunking strategy → run retrieval + generation + RAGAS scoring
-4. Apply parent-child chunking strategy → same pipeline
-5. Print results for each query
-6. Save raw results to `results/results_semantic.json` and `results/results_parent-child.json`
+The evaluation pipeline:
 
-**Duration:** ~5-10 minutes (depends on API rate limits)
+1. Loads the corpus.
+2. Loads the benchmark queries.
+3. Creates the Semantic/document-level representation.
+4. Creates the Parent-Child representation.
+5. Builds the retrieval index for each strategy.
+6. Retrieves relevant context for each query.
+7. Generates an answer.
+8. Calculates retrieval metrics.
+9. Calculates generation metrics.
+10. Saves the raw evaluation results.
 
-### Analyze Results
+The current benchmark uses:
+
+* **20 corpus documents**
+* **20 evaluation queries**
+* The same queries for both chunking strategies
+
+Results are saved to:
+
+```text
+results/results_semantic.json
+results/results_parent-child.json
+```
+
+---
+
+# Analyze Results
+
+After evaluation completes, run:
 
 ```bash
 python analyze_results.py
 ```
 
-Generates:
-- **results/EVALUATION_REPORT.md** — Markdown report with findings
-- **results/query_analysis.json** — Detailed per-query comparison
+This compares the two strategies and generates:
 
-## Understanding the Strategies
+```text
+results/EVALUATION_REPORT.md
+results/query_analysis.json
+```
 
-### Semantic Chunking
-- **What**: Each document is kept as one chunk
-- **Assumption**: Documents are already topically coherent
-- **Pros**: 
-  - Simpler retrieval (fewer chunks to compare)
-  - Stays on topic
-- **Cons**: 
-  - May return too much context (noise)
-  - Not ideal for long documents
+The Markdown report contains:
 
-### Parent-Child Chunking
-- **What**: Documents split into small "child" chunks (2 sentences each) + full "parent" chunk
-- **Retrieval**: Returns child chunk for precision + parent chunk for full context
-- **Pros**:
-  - Precise matching on children
-  - Full context from parent
-  - Better for long documents
-- **Cons**:
-  - More chunks = slower retrieval
-  - Parent context might be too broad
+* Executive summary
+* Metric-level comparison
+* Detailed metric statistics
+* Query-level comparison
+* Strategy winners
+* Limitations
+* Recommendations
 
-## Metrics Explained
+---
+
+# Chunking Strategies
+
+## 1. Semantic / Document-Level Chunking
+
+The current Semantic strategy treats each corpus document as a single retrieval unit.
+
+In this benchmark, the corpus documents are already relatively focused on individual RAG concepts.
+
+### Advantages
+
+* Simple implementation
+* Low chunk-management overhead
+* Preserves the complete document context
+* Works well when documents are already topically coherent
+
+### Limitations
+
+* A retrieved result may contain more information than the query requires
+* Larger retrieval units can introduce additional context
+* Less suitable for very long documents
+* Does not provide fine-grained chunk retrieval
+
+> **Important:** In the current implementation, "semantic chunking" is a document-level baseline rather than a full semantic-boundary chunking algorithm that dynamically splits documents based on embedding similarity.
+
+---
+
+## 2. Parent-Child Chunking
+
+Parent-Child chunking divides documents into smaller child chunks while maintaining the larger parent document as surrounding context.
+
+The child chunks provide more precise retrieval units, while the parent provides broader context to the generation step.
+
+### Advantages
+
+* More precise matching
+* Smaller retrieval units
+* Preserves broader document context
+* Potentially useful when questions require multiple related pieces of information
+
+### Limitations
+
+* Creates more retrieval units
+* Requires additional indexing and retrieval logic
+* Parent context can contain information that is not directly relevant
+* May introduce additional retrieval overhead
+
+---
+
+# Evaluation Methodology
+
+RAGBench evaluates both strategies using the same benchmark.
+
+For every query:
+
+```text
+Query
+  │
+  ▼
+Chunking Strategy
+  │
+  ▼
+Vector Retrieval
+  │
+  ▼
+Retrieved Context
+  │
+  ▼
+LLM Generation
+  │
+  ├── Retrieval Evaluation
+  │     ├── Hit@1
+  │     ├── Hit@3
+  │     └── MRR
+  │
+  └── Generation Evaluation
+        ├── Faithfulness
+        └── Answer Relevancy
+```
+
+Because both strategies are evaluated using the same queries and corpus, their results can be compared directly.
+
+---
+
+# Current Benchmark Results
+
+The current benchmark contains:
+
+* **20 documents**
+* **20 evaluation queries**
+
+The latest evaluation produced the following results:
+
+| Metric           | Semantic | Parent-Child | Result       |
+| ---------------- | -------: | -----------: | ------------ |
+| Hit@1            |    0.900 |        0.900 | Tie          |
+| Hit@3            |    1.000 |        1.000 | Tie          |
+| MRR              |    0.950 |        0.933 | Semantic     |
+| Faithfulness     |    1.000 |        1.000 | Tie          |
+| Answer Relevancy |    0.950 |        1.000 | Parent-Child |
+
+---
+
+## Retrieval Results
+
+### Hit@1
+
+```text
+Semantic:     0.900
+Parent-Child: 0.900
+```
+
+Both strategies performed identically.
+
+Neither strategy has an advantage in whether a relevant result appears at rank 1.
+
+### Hit@3
+
+```text
+Semantic:     1.000
+Parent-Child: 1.000
+```
+
+Both strategies achieved perfect Hit@3.
+
+Every benchmark query had a relevant result within the top three retrieved results.
+
+### MRR
+
+```text
+Semantic:     0.950
+Parent-Child: 0.933
+```
+
+Semantic achieved a slightly higher MRR.
+
+This indicates that, on this benchmark, the first relevant result tended to appear slightly higher in the ranking with the Semantic strategy.
+
+---
+
+# Generation Results
 
 ### Faithfulness
-**Definition**: Does the generated answer's claims come from the retrieved context?
 
-**Score Range**: 0-1 (1 = perfectly faithful)
+```text
+Semantic:     1.000
+Parent-Child: 1.000
+```
 
-**Why It Matters**: Prevents hallucination. An answer can be true in the real world but not grounded in your corpus.
+Both strategies achieved perfect faithfulness on the current test set.
 
-**Interpretation**:
-- `>0.8`: Strong grounding; low hallucination risk
-- `0.5-0.8`: Some unsupported claims
-- `<0.5`: Frequently hallucinates
-
-### Context Relevancy
-**Definition**: How on-topic are the retrieved chunks?
-
-**Score Range**: 0-1 (1 = all chunks relevant)
-
-**Why It Matters**: Measures retrieval quality. Irrelevant context confuses the generator.
-
-**Interpretation**:
-- `>0.8`: Excellent chunk selection
-- `0.5-0.8`: Some noise in results
-- `<0.5`: Poor retrieval; many irrelevant chunks
+This means the generated answers were judged to be fully supported by their retrieved context.
 
 ### Answer Relevancy
-**Definition**: Does the answer address what the user asked?
 
-**Score Range**: 0-1 (1 = perfectly addresses query)
+```text
+Semantic:     0.950
+Parent-Child: 1.000
+```
 
-**Why It Matters**: Catches off-topic or tangential answers.
+Parent-Child achieved a higher Answer Relevancy score.
 
-**Interpretation**:
-- `>0.8`: Answers user's question directly
-- `0.5-0.8`: Somewhat on-topic
-- `<0.5`: Answers different question
-
-### Context Recall
-**Definition**: What fraction of information needed for the answer was in the context?
-
-**Score Range**: 0-1 (1 = all needed info present)
-
-**Why It Matters**: Upper bounds answer quality. You can't answer well if key facts aren't retrieved.
-
-**Interpretation**:
-- `>0.8`: Most needed info retrieved
-- `0.5-0.8`: Partial coverage
-- `<0.5`: Important facts missing
+The difference suggests that Parent-Child retrieval produced context that allowed the generator to produce slightly more directly relevant answers for some queries.
 
 ---
 
-## Key Findings from Your Evaluation
+# Query-Level Results
 
-After running `analyze_results.py`, you'll see:
+The current generation comparison uses:
 
-1. **Overall Winner**: Which strategy has higher average scores
-2. **Metric-by-Metric**: Where each strategy excels
-3. **Query-Level Analysis**: Which queries favor which strategy
-4. **Trade-offs**: Precision vs. Recall implications
+```text
+Generation Score =
+(Faithfulness + Answer Relevancy) / 2
+```
+
+Across the 20 benchmark queries:
+
+```text
+Semantic wins:       0/20  (0%)
+Parent-Child wins:   4/20  (20%)
+Ties:               16/20  (80%)
+```
+
+### Queries Favoring Parent-Child
+
+The four queries where Parent-Child achieved a higher generation score were:
+
+1. **How does RRF combine results from different rankers?**
+2. **What is the benefit of asking a broader question before the specific one?**
+3. **How does a system decide which retrieval approach to use for a given question?**
+4. **How can questions requiring multiple connected facts be answered?**
+
+For each of these queries:
+
+```text
+Parent-Child: 1.000
+Semantic:     0.875
+Margin:       0.125
+```
+
+No queries in the current benchmark favored Semantic on the combined generation score.
 
 ---
 
-## Interpreting Results
+# Interpreting the Results
 
-### Example Output
+The benchmark does **not** show that one strategy universally outperforms the other.
 
-```
-Metric Comparison (Semantic vs Parent-Child):
+Instead, the results show different strengths.
 
-faithfulness:
-  Semantic: 0.750
-  Parent-Child: 0.720
-  Winner: SEMANTIC (+4.2%)
+### Semantic / Document-Level
 
-context_relevancy:
-  Semantic: 0.680
-  Parent-Child: 0.745
-  Winner: PARENT-CHILD (-8.5%)
-```
+Semantic achieved:
 
-**What this means:**
-- Semantic chunks are more faithful (answer sticks to context)
-- Parent-child retrieves more relevant passages (better topic matching)
-- **Trade-off**: Semantic = tighter answers; Parent-child = broader coverage
+* Equal Hit@1
+* Equal Hit@3
+* Higher MRR
+* Equal Faithfulness
+* Slightly lower Answer Relevancy
+
+This suggests that the document-level strategy performed very well for ranking relevant information near the top.
+
+### Parent-Child
+
+Parent-Child achieved:
+
+* Equal Hit@1
+* Equal Hit@3
+* Slightly lower MRR
+* Equal Faithfulness
+* Higher Answer Relevancy
+
+This suggests that Parent-Child retrieval can provide useful contextual information for generating directly relevant answers, despite its slightly lower MRR on this benchmark.
 
 ---
 
-## Advanced Usage
+# Is There an Overall Winner?
 
-### Modify Chunking Strategy
+There is **no clear universal winner**.
 
-Edit `eval.py` `chunk_corpus_parent_child()` method:
+The results are:
 
-```python
-def chunk_corpus_parent_child(self, sentences_per_child: int = 3):
-    # Change sentences_per_child to 3 for larger child chunks
-    # Larger chunks = less granularity, faster retrieval
+```text
+                 Semantic    Parent-Child
+Hit@1               0.900       0.900
+Hit@3               1.000       1.000
+MRR                 0.950       0.933
+Faithfulness        1.000       1.000
+Answer Relevancy    0.950       1.000
 ```
 
-### Change Retrieval Top-K
+Semantic wins MRR.
 
-Edit `eval.py` `run_evaluation()` call:
+Parent-Child wins Answer Relevancy.
 
-```python
-results = evaluator.run_evaluation(config, top_k=5)  # Retrieve top-5 instead of top-3
+The remaining metrics are tied.
+
+Therefore, the appropriate conclusion is:
+
+> **On this 20-query benchmark, Semantic/document-level chunking achieved slightly better retrieval ranking performance, while Parent-Child chunking achieved better Answer Relevancy. Neither strategy is a universal winner across all evaluated metrics.**
+
+---
+
+# Limitations
+
+The current results should be interpreted within the scope of this benchmark.
+
+### Small Evaluation Set
+
+The benchmark currently contains only:
+
+```text
+20 documents
+20 queries
 ```
 
-### Use Different Embedding Model
+This is useful for demonstrating the evaluation framework, but a larger dataset would provide stronger evidence.
 
-Edit `eval.py` `__init__()`:
+### LLM-Based Evaluation
 
-```python
-self.embeddings_model = SentenceTransformer("all-mpnet-base-v2")  # Different model
+Faithfulness and Answer Relevancy depend on an LLM-based judge.
+
+LLM evaluation can vary depending on:
+
+* Judge model
+* Prompting
+* Model behavior
+* API response variability
+
+### No Human Evaluation
+
+The current benchmark does not include human scoring.
+
+Human evaluation would provide an additional validation layer for generated-answer quality.
+
+### Specialized Corpus
+
+The corpus focuses on RAG concepts.
+
+Results from this dataset may not generalize to:
+
+* Legal documents
+* Financial documents
+* Medical documents
+* Technical documentation
+* Customer-support knowledge bases
+* Other production domains
+
+### Limited Context-Level Evaluation
+
+The current version does not produce:
+
+```text
+context_relevancy
+context_recall
 ```
 
-### Add Custom Queries
+Therefore, the benchmark currently cannot provide direct metric-level comparisons for those dimensions.
 
-Edit `test_queries.json`:
+---
+
+# Why Use Multiple Metrics?
+
+A single metric is not enough to evaluate a RAG system.
+
+For example:
+
+```text
+High MRR
+```
+
+does not necessarily mean:
+
+```text
+High answer quality
+```
+
+Similarly:
+
+```text
+High Answer Relevancy
+```
+
+does not necessarily mean:
+
+```text
+The answer is grounded in the retrieved context
+```
+
+RAGBench therefore separates evaluation into two stages:
+
+### Retrieval
+
+```text
+Hit@1
+Hit@3
+MRR
+```
+
+### Generation
+
+```text
+Faithfulness
+Answer Relevancy
+```
+
+This makes it easier to identify whether a problem originates from retrieval or generation.
+
+---
+
+# Reproducibility
+
+RAGBench uses a fixed benchmark:
+
+```text
+Corpus → test_queries.json → Retrieval → Generation → Evaluation
+```
+
+Both strategies are evaluated against the same queries.
+
+This allows changes to the following components to be tested systematically:
+
+* Chunking strategy
+* Chunk size
+* Parent-child configuration
+* Retrieval `top-k`
+* Embedding model
+* Generation model
+* Evaluation configuration
+
+---
+
+# Customizing the Benchmark
+
+## Add Evaluation Queries
+
+Add additional entries to:
+
+```text
+test_queries.json
+```
+
+Example:
 
 ```json
 {
   "query_id": "q_21",
-  "query": "Your custom question here?",
-  "relevant_ids": ["doc_05", "doc_19"]
+  "query": "Your evaluation question?",
+  "relevant_ids": ["doc_05"]
 }
 ```
 
+Adding more queries is one of the most useful ways to improve the reliability of the benchmark.
+
 ---
 
-## Troubleshooting
+## Change Retrieval Top-K
 
-### `GROQ_API_KEY not set`
-**Fix**: Set environment variable before running:
+The retrieval configuration can be changed in `eval.py`.
+
+For example:
+
+```python
+top_k=5
+```
+
+instead of:
+
+```python
+top_k=3
+```
+
+Changing `top-k` allows you to study how retrieval depth affects both retrieval and generation quality.
+
+---
+
+## Change Parent-Child Configuration
+
+The Parent-Child strategy can be configured through its chunking function in `eval.py`.
+
+For example:
+
+```python
+def chunk_corpus_parent_child(self, sentences_per_child=3):
+    ...
+```
+
+Increasing the number of sentences per child creates larger child chunks.
+
+Smaller children generally provide finer-grained retrieval, while larger children provide more local context.
+
+---
+
+## Change the Embedding Model
+
+The embedding model can also be changed in `eval.py`.
+
+For example:
+
+```python
+self.embeddings_model = SentenceTransformer(
+    "all-mpnet-base-v2"
+)
+```
+
+Different embedding models can produce different retrieval rankings, so changing the embedding model should be treated as a separate experiment.
+
+---
+
+# Troubleshooting
+
+## `GROQ_API_KEY not set`
+
+Set the API key before running the evaluation:
+
 ```bash
-export GROQ_API_KEY="your_key"
+export GROQ_API_KEY="your_groq_api_key"
 python eval.py
 ```
 
-### `RAGAS evaluation failed`
-**Cause**: Usually GROQ API rate limit or timeout
-**Fix**: 
-- Add delay between requests
-- Use smaller dataset first
-- Check API status
+Or place the key in `.env`:
 
-### Low faithfulness scores
-**Cause**: Generator hallucinates beyond context
-**Fix**:
-- Use stricter prompt
-- Increase top-k retrieval
-- Verify embedding model quality
-
----
-
-## Portfolio & Documentation
-
-### For Your GitHub/CV
-
-**README section:**
-```
-## RAGBench Evaluation Results
-
-Evaluated semantic chunking vs parent-child chunking on 20 RAG concept documents:
-
-- **Semantic Chunking**: Better faithfulness (0.75 avg)
-- **Parent-Child Chunking**: Better context relevancy (0.74 avg)
-- **Trade-off**: Precision vs coverage — chose [semantic/hybrid] based on use case
-
-[Link to EVALUATION_REPORT.md]
-```
-
-**LinkedIn post:**
-```
-Built RAGBench: A lightweight RAGAS-based evaluation framework for comparing RAG chunking strategies. 
-
-Key findings:
-📊 Semantic chunking 8% more faithful but 12% lower coverage
-🎯 Parent-child better for multi-hop reasoning
-🔄 Hybrid approach optimal for production
-
-[github.com/GulrezQayyum/ragbench]
+```env
+GROQ_API_KEY=your_groq_api_key
 ```
 
 ---
 
-## Timeline
+## RAGAS Evaluation Errors
 
-- **Setup**: 5 minutes (install + API key)
-- **Evaluation**: 5-10 minutes (depends on Groq rate limits)
-- **Analysis**: <1 minute
-- **Total**: ~15-20 minutes for full results
+If evaluation fails, common causes include:
 
----
+* API rate limits
+* Request timeouts
+* Invalid API credentials
+* Temporary API failures
+* Dependency/version incompatibilities
 
-## What You'll Learn
-
-✅ How RAGAS metrics actually measure RAG quality  
-✅ Real tradeoffs between chunking strategies  
-✅ How to design fair evaluation (fixed test set, multiple metrics)  
-✅ Interpreting LLM-based evaluation scores  
-✅ Honest analysis (strategies don't "win" globally—they win on different dimensions)  
+Check the terminal output for the specific failing request before changing the evaluation logic.
 
 ---
 
-## Next Steps
+## Slow Evaluation
 
-1. **Run evaluation** → `python eval.py`
-2. **Analyze results** → `python analyze_results.py`
-3. **Read report** → `results/EVALUATION_REPORT.md`
-4. **Extend**: Add more metrics (custom, domain-specific), test different embeddings
-5. **Document**: Add findings to ChunkLab README
+LLM-based generation and evaluation require API calls.
 
----
+Runtime depends on:
 
-## References
+* Number of queries
+* Number of evaluation metrics
+* API latency
+* API rate limits
+* Model response time
 
-- [RAGAS Metrics](https://docs.ragas.io/en/stable/concepts/metrics/index.html)
-- [LlamaIndex Evaluation Guide](https://gpt-index.readthedocs.io/en/latest/module_guides/evaluation/evaluation.html)
-- [Chunking Strategies Survey](https://www.arxiv.org/abs/2401.07559)
+The current 20-query benchmark is intended to remain lightweight enough for development and experimentation.
 
 ---
 
-## Questions?
+# Future Improvements
 
-When analyzing results, ask:
+The current implementation provides a foundation for expanding RAGBench.
 
-1. **Which metric matters most for my use case?** (e.g., RAG for legal = faithfulness priority)
-2. **Can I live with lower scores on one metric if another is high?** (tradeoff acceptance)
-3. **Do I have enough test data?** (20 queries is minimum; 100+ is better)
-4. **Are metrics correlating with human judgment?** (spot-check answers)
+Potential future improvements include:
+
+### 1. Add Context Relevancy
+
+Evaluate whether retrieved chunks are actually relevant to the query.
+
+### 2. Add Context Recall
+
+Measure whether the retrieved context contains the information needed to answer the question.
+
+### 3. Expand the Dataset
+
+Increase the number and diversity of:
+
+* Documents
+* Queries
+* Query types
+* Multi-hop questions
+* Difficult retrieval cases
+
+### 4. Add Human Evaluation
+
+Compare automated evaluation against human judgments.
+
+### 5. Test More Chunking Strategies
+
+Potential strategies include:
+
+* Fixed-size chunking
+* Recursive chunking
+* Sentence-based chunking
+* Semantic boundary chunking
+* Sliding-window chunking
+* Hierarchical chunking
+
+### 6. Test More Embedding Models
+
+Compare retrieval performance across different embedding models.
+
+### 7. Add Statistical Analysis
+
+With a larger dataset, confidence intervals and statistical significance testing could be added to determine whether observed differences are meaningful.
+
+---
+
+# Project Workflow
+
+The complete workflow is:
+
+```text
+                 ┌─────────────────┐
+                 │    Corpus       │
+                 │ 20 documents    │
+                 └────────┬────────┘
+                          │
+              ┌───────────┴───────────┐
+              │                       │
+              ▼                       ▼
+      ┌───────────────┐       ┌────────────────┐
+      │ Semantic /    │       │ Parent-Child   │
+      │ Document-Level│       │ Chunking       │
+      └───────┬───────┘       └───────┬────────┘
+              │                       │
+              ▼                       ▼
+      ┌───────────────┐       ┌────────────────┐
+      │   Retrieval   │       │   Retrieval    │
+      └───────┬───────┘       └───────┬────────┘
+              │                       │
+              ▼                       ▼
+      ┌───────────────┐       ┌────────────────┐
+      │   Generation  │       │   Generation   │
+      └───────┬───────┘       └───────┬────────┘
+              │                       │
+              └───────────┬───────────┘
+                          ▼
+                 ┌──────────────────┐
+                 │    Evaluation    │
+                 ├──────────────────┤
+                 │ Hit@1            │
+                 │ Hit@3            │
+                 │ MRR              │
+                 │ Faithfulness     │
+                 │ Answer Relevancy │
+                 └────────┬─────────┘
+                          │
+                          ▼
+                 ┌──────────────────┐
+                 │ Results Analysis │
+                 └──────────────────┘
+```
+
+---
+
+# Example Research Question
+
+RAGBench can be used to investigate questions such as:
+
+> **Does Parent-Child chunking improve RAG answer quality compared with document-level retrieval?**
+
+The current benchmark suggests:
+
+* Retrieval ranking is slightly better with the Semantic strategy according to MRR.
+* Parent-Child achieves better Answer Relevancy.
+* Hit@1 and Hit@3 are identical.
+* Faithfulness is identical.
+* Therefore, the answer depends on which aspect of RAG performance is most important.
+
+---
+
+# Portfolio Value
+
+RAGBench demonstrates practical experience with:
+
+* Retrieval-Augmented Generation
+* Vector databases
+* Embedding models
+* Chunking strategies
+* LLM-based evaluation
+* RAGAS
+* Retrieval metrics
+* Generation metrics
+* Benchmark design
+* Experiment comparison
+* Result analysis
+
+The project is designed not simply to build a RAG pipeline, but to **measure and compare how design decisions affect RAG performance**.
+
+---
+
+# Current Result Summary
+
+The latest benchmark result can be summarized as:
+
+```text
+                    Semantic    Parent-Child
+                    --------    -----------
+Hit@1                 0.900        0.900
+Hit@3                 1.000        1.000
+MRR                   0.950        0.933
+Faithfulness          1.000        1.000
+Answer Relevancy      0.950        1.000
+```
+
+### Conclusion
+
+**Semantic/document-level chunking** achieved slightly better retrieval ranking according to MRR.
+
+**Parent-Child chunking** achieved better Answer Relevancy and won on 4 of the 20 query-level generation comparisons.
+
+However, **16 of 20 queries were ties**, and neither strategy dominated the benchmark across all metrics.
+
+The current evidence therefore supports a **trade-off rather than a universal winner**.
+
+---
+
+# Evaluation Report
+
+For the complete benchmark analysis, see:
+
+```text
+results/EVALUATION_REPORT.md
+```
+
+The report contains the detailed metric statistics and query-level comparison generated from the current evaluation results.
+
+---
+
+# Roadmap
+
+* [x] Build evaluation corpus
+* [x] Create fixed benchmark queries
+* [x] Implement Semantic/document-level strategy
+* [x] Implement Parent-Child strategy
+* [x] Implement retrieval evaluation
+* [x] Implement generation evaluation
+* [x] Generate automated comparison report
+* [x] Add query-level analysis
+* [ ] Add Context Relevancy
+* [ ] Add Context Recall
+* [ ] Expand benchmark dataset
+* [ ] Add human evaluation
+* [ ] Add additional chunking strategies
+* [ ] Add additional embedding models
+* [ ] Add statistical significance analysis
+
+---
+
+# References
+
+* [RAGAS Documentation](https://docs.ragas.io/)
+* [LlamaIndex Evaluation Documentation](https://docs.llamaindex.ai/)
+* [Chunking Strategies Survey](https://arxiv.org/abs/2401.07559)
+
+---
+
+# License
+
+This project is intended for educational, experimental, and research purposes.
