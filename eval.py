@@ -1,28 +1,3 @@
-#!/usr/bin/env python3
-
-"""
-RAGBench Evaluation Runner
-
-Compares:
-    1. Semantic chunking
-    2. Parent-child chunking
-
-Retrieval metrics:
-    - Hit@1
-    - Hit@3
-    - MRR
-
-Generation metrics:
-    - Faithfulness
-    - Answer Relevancy
-
-Default:
-    python eval.py
-
-Full benchmark:
-    RUN_FULL_EVAL=1 python eval.py
-"""
-
 import json
 import os
 import re
@@ -105,11 +80,11 @@ class RAGEvaluator:
         self.chroma_client = chromadb.Client()
 
         print(
-            f"✅ Loaded {len(self.corpus)} documents"
+            f"Loaded {len(self.corpus)} documents"
         )
 
         print(
-            f"✅ Loaded {len(self.queries)} test queries"
+            f"Loaded {len(self.queries)} test queries"
         )
 
     # ========================================================
@@ -147,7 +122,7 @@ class RAGEvaluator:
             }
 
         print(
-            f"✅ Semantic chunking: "
+            f"Semantic chunking: "
             f"{len(chunks)} chunks created"
         )
 
@@ -221,7 +196,7 @@ class RAGEvaluator:
             parent_chunk_id += 1
 
         print(
-            f"✅ Parent-child chunking: "
+            f"Parent-child chunking: "
             f"{len(chunks)} chunks created"
         )
 
@@ -287,7 +262,7 @@ class RAGEvaluator:
         )
 
         print(
-            f"✅ ChromaDB collection "
+            f"ChromaDB collection "
             f"'{collection_name}' created with "
             f"{len(chunk_ids)} chunks"
         )
@@ -448,7 +423,7 @@ Answer:
         context_text = "\n\n".join(context)
 
         prompt = f"""
-You are evaluating a RAG system.
+Evaluate this RAG answer.
 
 QUESTION:
 {query}
@@ -466,20 +441,15 @@ CRITERIA:
 {criteria}
 
 Choose exactly one score:
-
 0
 0.25
 0.5
 0.75
 1
 
-Return ONLY the score.
-Do not explain.
-Do not use JSON.
-Do not use Markdown.
-Do not write any other text.
-
-Your response:
+Return ONLY valid JSON in this exact format:
+{{"score": 0}}
+Replace 0 with the selected score.
 """
 
         try:
@@ -491,7 +461,10 @@ Your response:
                         {
                             "role": "system",
                             "content": (
-                                "Return exactly one number: "
+                                "You are a strict RAG evaluation judge. "
+                                "Evaluate the requested metric and return "
+                                "ONLY a JSON object with one field named "
+                                '"score". The score must be exactly one of '
                                 "0, 0.25, 0.5, 0.75, or 1."
                             ),
                         },
@@ -500,26 +473,39 @@ Your response:
                             "content": prompt,
                         },
                     ],
-                    max_completion_tokens=20,
+                    max_completion_tokens=200,
                     temperature=0,
+                    reasoning_effort="low",
+                    response_format={"type": "json_object"},
                 )
             )
 
             message = response.choices[0].message
+            raw = (message.content or "").strip()
 
-            raw = (
-                message.content
-                if message.content
-                else ""
+            if not raw:
+                print(
+                    f"      {metric_name}: "
+                    "judge returned empty final content"
+                )
+                return None
+
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                print(
+                    f"      {metric_name}: "
+                    f"invalid JSON: {raw!r}"
+                )
+                return None
+
+            score = self.parse_score(
+                str(data.get("score", ""))
             )
-
-            raw = raw.strip()
 
             print(
-                f"      {metric_name}: {raw!r}"
+                f"      {metric_name}: {score!r}"
             )
-
-            score = self.parse_score(raw)
 
             if score is not None:
                 return max(
@@ -528,9 +514,8 @@ Your response:
                 )
 
         except Exception as e:
-
             print(
-                f"      ⚠️ {metric_name} judge error: {e}"
+                f"      {metric_name} judge error: {e}"
             )
 
         return None
@@ -706,14 +691,14 @@ Score 0 when it does not answer the question.
                     }
 
                     print(
-                        f"↩️ Resuming: "
+                        f"Resuming: "
                         f"{len(results)} saved queries"
                     )
 
             except Exception as e:
 
                 print(
-                    f"⚠️ Could not load "
+                    f"Could not load "
                     f"previous results: {e}"
                 )
 
@@ -929,7 +914,7 @@ Score 0 when it does not answer the question.
             ):
 
                 print(
-                    f"\n✅ {query_id} "
+                    f"\n{query_id} "
                     f"already repaired. Skipping."
                 )
 
@@ -940,7 +925,7 @@ Score 0 when it does not answer the question.
             print("\n" + "-" * 60)
 
             print(
-                f"🔁 Evaluating {query_id}"
+                f"Evaluating {query_id}"
             )
 
             print(
@@ -961,7 +946,7 @@ Score 0 when it does not answer the question.
             if not context:
 
                 print(
-                    "⚠️ No stored context."
+                    "No stored context."
                 )
 
                 continue
@@ -969,13 +954,13 @@ Score 0 when it does not answer the question.
             if not answer:
 
                 print(
-                    "⚠️ No stored answer."
+                    "No stored answer."
                 )
 
                 continue
 
             print(
-                "   ♻️ Reusing stored "
+                "   Reusing stored "
                 "context and answer"
             )
 
@@ -1007,13 +992,13 @@ Score 0 when it does not answer the question.
                 repaired += 1
 
                 print(
-                    "   ✅ Both scores repaired"
+                    "   Both scores repaired"
                 )
 
             else:
 
                 print(
-                    "   ⚠️ Judge failed to return "
+                    "   Judge failed to return "
                     "both scores"
                 )
 
@@ -1044,16 +1029,16 @@ Score 0 when it does not answer the question.
                     indent=2,
                 )
 
-            print("   💾 Saved")
+            print("   Saved")
 
         print("\n" + "=" * 60)
 
         print(
-            f"📌 Retry attempts: {attempted}"
+            f"Retry attempts: {attempted}"
         )
 
         print(
-            f"✅ Successfully repaired: {repaired}"
+            f"Successfully repaired: {repaired}"
         )
 
         print("=" * 60)
@@ -1156,7 +1141,7 @@ def retry_mode():
     print("\n" + "=" * 60)
 
     print(
-        "📊 UPDATED PARENT-CHILD RESULTS"
+        "UPDATED PARENT-CHILD RESULTS"
     )
 
     print("=" * 60)
@@ -1185,7 +1170,7 @@ def retry_mode():
     if remaining_failures:
 
         print(
-            "⚠️ Still failed:"
+            "Still failed:"
         )
 
         for query_id in remaining_failures:
@@ -1202,7 +1187,7 @@ def retry_mode():
     else:
 
         print(
-            "🎉 All targeted "
+            "All targeted "
             "parent-child evaluations "
             "are complete!"
         )
@@ -1271,7 +1256,7 @@ def full_evaluation_mode():
         )
 
         print(
-            f"↩️ Reusing existing "
+            f"Reusing existing "
             f"semantic results: "
             f"{len(semantic_results)} queries"
         )
@@ -1309,7 +1294,7 @@ def full_evaluation_mode():
     print("\n" + "=" * 60)
 
     print(
-        "📊 RESULTS COMPARISON"
+        "RESULTS COMPARISON"
     )
 
     print("=" * 60)
@@ -1324,7 +1309,7 @@ def full_evaluation_mode():
         )
 
     print(
-        "\n✅ Evaluation complete!"
+        "\n Evaluation complete!"
     )
 
 
