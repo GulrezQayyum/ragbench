@@ -9,6 +9,7 @@ gradio>=4.0.0              # Interactive Gradio interface (recommended - free!)
 transformers>=4.30.0       # Hugging Face transformers
 torch>=2.0.0               # PyTorch (base dependency)
 sentence-transformers>=2.2.2  # Embeddings
+spaces>=0.0.1                  # Hugging Face Spaces integration
 
 # Vector Database
 chromadb>=0.3.21           # Vector store for RAG

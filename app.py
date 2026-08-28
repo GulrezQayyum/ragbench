@@ -1,6 +1,11 @@
 import gradio as gr
 import pandas as pd
+import spaces
 
+
+@spaces.GPU
+def gpu_check():
+    return "RAGBench is running successfully."
 # ==================== DATA ====================
 
 results_data = {
