@@ -13,8 +13,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # (See Note 1 below)
-          lfs: true      # (See Note 2 below)
+          lfs: true
 
       - name: Deploy
         env:
