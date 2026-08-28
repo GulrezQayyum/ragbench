@@ -453,8 +453,8 @@ with gr.Blocks(title="RAGBench", theme=gr.themes.Soft()) as demo:
         ### 🔗 Quick Links
         
         - **GitHub:** [github.com/GulrezQayyum/ragbench](https://github.com/GulrezQayyum/ragbench)
-        - **Test Queries Dataset:** [HF Hub](https://huggingface.co/datasets/GulrezQayyum/ragbench-queries)
-        - **Corpus Dataset:** [HF Hub](https://huggingface.co/datasets/GulrezQayyum/ragbench-corpus)
+        - **Test Queries Dataset:** [HF Hub](https://huggingface.co/datasets/Gul55555/ragbench-queries?utm_source=chatgpt.com)
+        - **Corpus Dataset:** [HF Hub](https://huggingface.co/datasets/Gul55555/ragbench-corpus?utm_source=chatgpt.com)
         - **Author:** [Gulrez Qayyum](https://github.com/GulrezQayyum)
         
         ### 📖 Built With
