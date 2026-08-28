@@ -1,0 +1,582 @@
+[
+  {
+    "query_id": "q_01",
+    "query": "How does RRF combine results from different rankers?",
+    "relevant_ids": [
+      "doc_01"
+    ],
+    "retrieved_ids": [
+      "doc_01_semantic",
+      "doc_02_semantic",
+      "doc_04_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_01",
+      "doc_02",
+      "doc_04"
+    ],
+    "retrieved_context": [
+      "Reciprocal rank fusion combines ranked lists from multiple retrievers by scoring each document as the sum of 1 divided by (k plus its rank) across all lists, so documents that appear near the top of several lists rise above documents that only appear once.",
+      "Cross-encoder rerankers take a query and a candidate passage together as a single input to a transformer, letting attention flow between them, which usually produces more accurate relevance scores than comparing two independently computed embeddings.",
+      "Dense retrieval encodes both queries and documents into the same vector space using a neural embedding model, then ranks documents by cosine similarity or dot product to the query vector."
+    ],
+    "generated_answer": "Reciprocal Rank Fusion scores each document by summing\u202f\\( \\frac{1}{k + \\text{rank}} \\)\u202fover all the ranked lists it appears in. Documents that are near the top in multiple lists receive higher total scores and therefore rise above those that appear only once.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 0.75
+  },
+  {
+    "query_id": "q_02",
+    "query": "What makes cross-encoders more accurate than comparing two separate embeddings?",
+    "relevant_ids": [
+      "doc_02"
+    ],
+    "retrieved_ids": [
+      "doc_02_semantic",
+      "doc_20_semantic",
+      "doc_16_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_02",
+      "doc_20",
+      "doc_16"
+    ],
+    "retrieved_context": [
+      "Cross-encoder rerankers take a query and a candidate passage together as a single input to a transformer, letting attention flow between them, which usually produces more accurate relevance scores than comparing two independently computed embeddings.",
+      "Contextual embeddings adjust a chunk's vector representation using surrounding document context, so that a chunk which reads ambiguously on its own still embeds close to queries about the topic it actually belongs to.",
+      "Vector databases like ChromaDB store embeddings alongside metadata and support approximate nearest neighbor search, which trades a small amount of recall for large gains in query speed compared to brute-force comparison."
+    ],
+    "generated_answer": "Cross\u2011encoders feed the query and the candidate passage together into a single transformer, allowing attention to flow between the two texts. This joint processing lets the model directly capture interactions and relevance cues that independent embeddings\u2014computed separately and then compared\u2014cannot, resulting in more accurate relevance scores.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_03",
+    "query": "Explain how keyword frequency scoring works in sparse search",
+    "relevant_ids": [
+      "doc_03"
+    ],
+    "retrieved_ids": [
+      "doc_03_semantic",
+      "doc_04_semantic",
+      "doc_16_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_03",
+      "doc_04",
+      "doc_16"
+    ],
+    "retrieved_context": [
+      "BM25 is a sparse retrieval function that scores documents based on term frequency and inverse document frequency, with saturation so that repeating a keyword many times gives diminishing returns rather than an unbounded score boost.",
+      "Dense retrieval encodes both queries and documents into the same vector space using a neural embedding model, then ranks documents by cosine similarity or dot product to the query vector.",
+      "Vector databases like ChromaDB store embeddings alongside metadata and support approximate nearest neighbor search, which trades a small amount of recall for large gains in query speed compared to brute-force comparison."
+    ],
+    "generated_answer": "Keyword\u2011frequency scoring in a sparse search (e.g., BM25) counts how many times a query term appears in each document (term\u2011frequency). That raw count is then weighted by the term\u2019s inverse\u2011document\u2011frequency (IDF) so that rare words contribute more than common ones. The BM25 formula also applies a saturation (non\u2011linear) component, which makes the contribution of additional occurrences diminish\u2014repeating a keyword many times does not keep increasing the score indefinitely but yields diminishing returns. This combination of TF, IDF, and saturation determines each document\u2019s relevance score.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_04",
+    "query": "How do neural embeddings enable similarity search between text?",
+    "relevant_ids": [
+      "doc_04"
+    ],
+    "retrieved_ids": [
+      "doc_04_semantic",
+      "doc_02_semantic",
+      "doc_20_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_04",
+      "doc_02",
+      "doc_20"
+    ],
+    "retrieved_context": [
+      "Dense retrieval encodes both queries and documents into the same vector space using a neural embedding model, then ranks documents by cosine similarity or dot product to the query vector.",
+      "Cross-encoder rerankers take a query and a candidate passage together as a single input to a transformer, letting attention flow between them, which usually produces more accurate relevance scores than comparing two independently computed embeddings.",
+      "Contextual embeddings adjust a chunk's vector representation using surrounding document context, so that a chunk which reads ambiguously on its own still embeds close to queries about the topic it actually belongs to."
+    ],
+    "generated_answer": "Neural embeddings map queries and documents into a common high\u2011dimensional vector space. By encoding each piece of text with the same embedding model, the resulting vectors can be compared directly\u2014typically using cosine similarity or a dot product\u2014and the most similar documents (those whose vectors are closest to the query vector) are retrieved. This vector\u2011based similarity search is the core of dense retrieval.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_05",
+    "query": "How are real-world facts represented so a system can traverse them?",
+    "relevant_ids": [
+      "doc_05"
+    ],
+    "retrieved_ids": [
+      "doc_05_semantic",
+      "doc_15_semantic",
+      "doc_19_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_05",
+      "doc_15",
+      "doc_19"
+    ],
+    "retrieved_context": [
+      "A knowledge graph represents facts as triples of subject, relation, and object, allowing multi-hop questions to be answered by traversing edges between entities rather than searching raw text.",
+      "Entity linking maps a mention of a name or term in text to a specific node in a knowledge graph, which is a prerequisite step before multi-hop graph traversal can be used to answer a question about that entity.",
+      "GraphRAG combines a knowledge graph with vector retrieval so that a system can answer multi-hop questions that require connecting facts across several documents, not just questions answerable from a single passage."
+    ],
+    "generated_answer": "Real\u2011world facts are encoded in a knowledge graph as **triples** \u2014\u202fa subject node, a relation edge, and an object node. This subject\u2011relation\u2011object representation lets a system traverse from one entity to another via the graph\u2019s edges to answer multi\u2011hop questions.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_06",
+    "query": "What is late chunking and why keep document-level context in each chunk?",
+    "relevant_ids": [
+      "doc_06"
+    ],
+    "retrieved_ids": [
+      "doc_06_semantic",
+      "doc_07_semantic",
+      "doc_20_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_06",
+      "doc_07",
+      "doc_20"
+    ],
+    "retrieved_context": [
+      "Late chunking generates token-level embeddings for an entire document first, then pools them into chunk vectors afterward, so each chunk's embedding still carries context from the rest of the document.",
+      "Parent-child chunking splits a document into small child chunks for precise retrieval matching, while keeping a link to a larger parent chunk that gets returned to the language model for fuller context.",
+      "Contextual embeddings adjust a chunk's vector representation using surrounding document context, so that a chunk which reads ambiguously on its own still embeds close to queries about the topic it actually belongs to."
+    ],
+    "generated_answer": "Late chunking is a technique where the model first creates token\u2011level embeddings for the whole document and only afterward pools those token embeddings into vectors for individual chunks. Because the chunk vectors are derived from embeddings that were computed with the entire document\u2019s context, each chunk retains information from the rest of the document. Keeping this document\u2011level context in every chunk ensures that the chunk\u2019s representation reflects the surrounding text, which helps the chunk remain meaningful and improves retrieval and matching accuracy, especially when a chunk alone would be ambiguous.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_07",
+    "query": "How does parent-child chunking balance precise matching with full context?",
+    "relevant_ids": [
+      "doc_07"
+    ],
+    "retrieved_ids": [
+      "doc_07_semantic",
+      "doc_06_semantic",
+      "doc_18_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_07",
+      "doc_06",
+      "doc_18"
+    ],
+    "retrieved_context": [
+      "Parent-child chunking splits a document into small child chunks for precise retrieval matching, while keeping a link to a larger parent chunk that gets returned to the language model for fuller context.",
+      "Late chunking generates token-level embeddings for an entire document first, then pools them into chunk vectors afterward, so each chunk's embedding still carries context from the rest of the document.",
+      "Fixed-size chunking splits a document into chunks of a set number of tokens or words with a small overlap between consecutive chunks, and is the simplest chunking strategy to implement though not the most topically coherent."
+    ],
+    "generated_answer": "Parent\u2011child chunking creates many small \u201cchild\u201d chunks that are easy to match precisely during retrieval, but each child retains a reference to its larger \u201cparent\u201d chunk. When a child is retrieved, the associated parent chunk is also supplied to the language model, giving it the broader context of the original document. This way the system gets the accuracy of fine\u2011grained matching while still providing the full\u2011document context for generation.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_08",
+    "query": "How do you check if a generated answer is actually grounded in what was retrieved?",
+    "relevant_ids": [
+      "doc_08"
+    ],
+    "retrieved_ids": [
+      "doc_08_semantic",
+      "doc_17_semantic",
+      "doc_09_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_08",
+      "doc_17",
+      "doc_09"
+    ],
+    "retrieved_context": [
+      "Faithfulness in RAG evaluation measures whether a generated answer's claims are actually supported by the retrieved context, independent of whether the answer happens to be factually true in the real world.",
+      "Answer relevancy in RAG evaluation checks whether the generated answer actually addresses what the user asked, penalizing answers that are factually supported by the context but wander off topic.",
+      "Context recall measures what fraction of the information needed to answer a question was actually present in the retrieved chunks, which caps the best possible answer quality regardless of how good the generator is."
+    ],
+    "generated_answer": "You verify it by measuring **faithfulness**\u2014i.e., compare the answer\u2019s claims against the retrieved chunks and confirm that each claim is explicitly supported by that retrieved context. If the answer\u2019s statements can be traced to evidence in the retrieved material, it is grounded; otherwise it is not.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_09",
+    "query": "What metric caps answer quality based on how much needed info was retrieved?",
+    "relevant_ids": [
+      "doc_09"
+    ],
+    "retrieved_ids": [
+      "doc_09_semantic",
+      "doc_17_semantic",
+      "doc_08_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_09",
+      "doc_17",
+      "doc_08"
+    ],
+    "retrieved_context": [
+      "Context recall measures what fraction of the information needed to answer a question was actually present in the retrieved chunks, which caps the best possible answer quality regardless of how good the generator is.",
+      "Answer relevancy in RAG evaluation checks whether the generated answer actually addresses what the user asked, penalizing answers that are factually supported by the context but wander off topic.",
+      "Faithfulness in RAG evaluation measures whether a generated answer's claims are actually supported by the retrieved context, independent of whether the answer happens to be factually true in the real world."
+    ],
+    "generated_answer": "Context recall.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_10",
+    "query": "Why would a system generate a fake answer before embedding a search query?",
+    "relevant_ids": [
+      "doc_10"
+    ],
+    "retrieved_ids": [
+      "doc_10_semantic",
+      "doc_08_semantic",
+      "doc_17_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_10",
+      "doc_08",
+      "doc_17"
+    ],
+    "retrieved_context": [
+      "HyDE, or hypothetical document embeddings, prompts a language model to write a fake answer to the query first, then embeds that fake answer instead of the raw query, because answer-shaped text tends to be closer in embedding space to real answer passages than a short question is.",
+      "Faithfulness in RAG evaluation measures whether a generated answer's claims are actually supported by the retrieved context, independent of whether the answer happens to be factually true in the real world.",
+      "Answer relevancy in RAG evaluation checks whether the generated answer actually addresses what the user asked, penalizing answers that are factually supported by the context but wander off topic."
+    ],
+    "generated_answer": "Because an \u201canswer\u2011shaped\u201d text lies closer in embedding space to the passages that actually contain the answer. By first having the model draft a plausible answer and embedding that instead of the raw short query, the system produces a query vector that is more likely to retrieve relevant documents. This improves retrieval quality compared with embedding the original brief question.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_11",
+    "query": "How does rephrasing one question into several versions help retrieval?",
+    "relevant_ids": [
+      "doc_11"
+    ],
+    "retrieved_ids": [
+      "doc_11_semantic",
+      "doc_12_semantic",
+      "doc_02_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_11",
+      "doc_12",
+      "doc_02"
+    ],
+    "retrieved_context": [
+      "Multi-query expansion asks a language model to rewrite one query into several differently phrased versions, retrieves for each version separately, and merges the result lists, which helps when the original phrasing doesn't match the vocabulary used in the source documents.",
+      "Step-back prompting asks a language model to first produce a more general or abstract version of a question before answering the specific one, which can surface background context that the specific question alone would miss.",
+      "Cross-encoder rerankers take a query and a candidate passage together as a single input to a transformer, letting attention flow between them, which usually produces more accurate relevance scores than comparing two independently computed embeddings."
+    ],
+    "generated_answer": "Rephrasing the query into several differently worded versions creates multiple chances to match the vocabulary used in the source documents. Each version is searched separately, and the results are merged, so documents that would be missed by the original wording can still be retrieved.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_12",
+    "query": "What is the benefit of asking a broader question before the specific one?",
+    "relevant_ids": [
+      "doc_12"
+    ],
+    "retrieved_ids": [
+      "doc_12_semantic",
+      "doc_11_semantic",
+      "doc_17_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_12",
+      "doc_11",
+      "doc_17"
+    ],
+    "retrieved_context": [
+      "Step-back prompting asks a language model to first produce a more general or abstract version of a question before answering the specific one, which can surface background context that the specific question alone would miss.",
+      "Multi-query expansion asks a language model to rewrite one query into several differently phrased versions, retrieves for each version separately, and merges the result lists, which helps when the original phrasing doesn't match the vocabulary used in the source documents.",
+      "Answer relevancy in RAG evaluation checks whether the generated answer actually addresses what the user asked, penalizing answers that are factually supported by the context but wander off topic."
+    ],
+    "generated_answer": "Asking a broader, more abstract version first helps surface background context that the specific question alone might miss.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 0.75
+  },
+  {
+    "query_id": "q_13",
+    "query": "How does a system decide which retrieval approach to use for a given question?",
+    "relevant_ids": [
+      "doc_13"
+    ],
+    "retrieved_ids": [
+      "doc_13_semantic",
+      "doc_04_semantic",
+      "doc_09_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_13",
+      "doc_04",
+      "doc_09"
+    ],
+    "retrieved_context": [
+      "Query routing uses a classifier or a prompted language model to decide which retrieval strategy or which data source a given query should be sent to, instead of applying the same fixed pipeline to every query.",
+      "Dense retrieval encodes both queries and documents into the same vector space using a neural embedding model, then ranks documents by cosine similarity or dot product to the query vector.",
+      "Context recall measures what fraction of the information needed to answer a question was actually present in the retrieved chunks, which caps the best possible answer quality regardless of how good the generator is."
+    ],
+    "generated_answer": "The system uses **query routing**: it runs the question through a classifier (or a prompted language model) that predicts which retrieval strategy or data source is most appropriate, and then sends the query to that specific approach instead of using a single fixed pipeline for all questions.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 0.75
+  },
+  {
+    "query_id": "q_14",
+    "query": "How do you split text based on topic shifts instead of a fixed length?",
+    "relevant_ids": [
+      "doc_14"
+    ],
+    "retrieved_ids": [
+      "doc_14_semantic",
+      "doc_18_semantic",
+      "doc_07_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_14",
+      "doc_18",
+      "doc_07"
+    ],
+    "retrieved_context": [
+      "Semantic chunking splits text at points where the embedding similarity between adjacent sentences drops sharply, aiming to keep each chunk topically coherent instead of cutting at a fixed number of characters.",
+      "Fixed-size chunking splits a document into chunks of a set number of tokens or words with a small overlap between consecutive chunks, and is the simplest chunking strategy to implement though not the most topically coherent.",
+      "Parent-child chunking splits a document into small child chunks for precise retrieval matching, while keeping a link to a larger parent chunk that gets returned to the language model for fuller context."
+    ],
+    "generated_answer": "You use **semantic chunking**: compute an embedding for each sentence (or small passage), compare the similarity of adjacent embeddings, and insert a split wherever the similarity drops sharply. This creates chunks that follow natural topic shifts instead of being limited to a fixed token or character count.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_15",
+    "query": "What step connects a mentioned name to a node in a graph?",
+    "relevant_ids": [
+      "doc_15"
+    ],
+    "retrieved_ids": [
+      "doc_15_semantic",
+      "doc_05_semantic",
+      "doc_19_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_15",
+      "doc_05",
+      "doc_19"
+    ],
+    "retrieved_context": [
+      "Entity linking maps a mention of a name or term in text to a specific node in a knowledge graph, which is a prerequisite step before multi-hop graph traversal can be used to answer a question about that entity.",
+      "A knowledge graph represents facts as triples of subject, relation, and object, allowing multi-hop questions to be answered by traversing edges between entities rather than searching raw text.",
+      "GraphRAG combines a knowledge graph with vector retrieval so that a system can answer multi-hop questions that require connecting facts across several documents, not just questions answerable from a single passage."
+    ],
+    "generated_answer": "Entity linking.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_16",
+    "query": "What tradeoff do fast approximate vector search methods make?",
+    "relevant_ids": [
+      "doc_16"
+    ],
+    "retrieved_ids": [
+      "doc_16_semantic",
+      "doc_04_semantic",
+      "doc_02_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_16",
+      "doc_04",
+      "doc_02"
+    ],
+    "retrieved_context": [
+      "Vector databases like ChromaDB store embeddings alongside metadata and support approximate nearest neighbor search, which trades a small amount of recall for large gains in query speed compared to brute-force comparison.",
+      "Dense retrieval encodes both queries and documents into the same vector space using a neural embedding model, then ranks documents by cosine similarity or dot product to the query vector.",
+      "Cross-encoder rerankers take a query and a candidate passage together as a single input to a transformer, letting attention flow between them, which usually produces more accurate relevance scores than comparing two independently computed embeddings."
+    ],
+    "generated_answer": "Fast approximate vector search methods sacrifice a small amount of recall\u2014potentially missing some true nearest neighbors\u2014in exchange for dramatically faster query speeds compared to exhaustive (brute\u2011force) search.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_17",
+    "query": "How do you measure whether a generated answer stays on topic?",
+    "relevant_ids": [
+      "doc_17"
+    ],
+    "retrieved_ids": [
+      "doc_17_semantic",
+      "doc_08_semantic",
+      "doc_09_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_17",
+      "doc_08",
+      "doc_09"
+    ],
+    "retrieved_context": [
+      "Answer relevancy in RAG evaluation checks whether the generated answer actually addresses what the user asked, penalizing answers that are factually supported by the context but wander off topic.",
+      "Faithfulness in RAG evaluation measures whether a generated answer's claims are actually supported by the retrieved context, independent of whether the answer happens to be factually true in the real world.",
+      "Context recall measures what fraction of the information needed to answer a question was actually present in the retrieved chunks, which caps the best possible answer quality regardless of how good the generator is."
+    ],
+    "generated_answer": "You measure it with an **answer\u2011relevancy** metric.\u202fIn RAG evaluation, relevance checks whether the generated response actually addresses the user\u2019s question, penalizing answers that may be factually supported by the retrieved context but drift away from the intended topic. If the response does not directly answer what was asked, its relevance score drops, indicating it is off\u2011topic.",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_18",
+    "query": "What is the simplest way to break a document into pieces?",
+    "relevant_ids": [
+      "doc_18"
+    ],
+    "retrieved_ids": [
+      "doc_18_semantic",
+      "doc_07_semantic",
+      "doc_14_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_18",
+      "doc_07",
+      "doc_14"
+    ],
+    "retrieved_context": [
+      "Fixed-size chunking splits a document into chunks of a set number of tokens or words with a small overlap between consecutive chunks, and is the simplest chunking strategy to implement though not the most topically coherent.",
+      "Parent-child chunking splits a document into small child chunks for precise retrieval matching, while keeping a link to a larger parent chunk that gets returned to the language model for fuller context.",
+      "Semantic chunking splits text at points where the embedding similarity between adjacent sentences drops sharply, aiming to keep each chunk topically coherent instead of cutting at a fixed number of characters."
+    ],
+    "generated_answer": "The simplest way is\u202f**fixed-size chunking**, which splits a document into chunks of a set number of tokens or words (with a small overlap).",
+    "strategy": "semantic",
+    "hit_at_1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  },
+  {
+    "query_id": "q_19",
+    "query": "How can questions requiring multiple connected facts be answered?",
+    "relevant_ids": [
+      "doc_19"
+    ],
+    "retrieved_ids": [
+      "doc_05_semantic",
+      "doc_19_semantic",
+      "doc_08_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_05",
+      "doc_19",
+      "doc_08"
+    ],
+    "retrieved_context": [
+      "A knowledge graph represents facts as triples of subject, relation, and object, allowing multi-hop questions to be answered by traversing edges between entities rather than searching raw text.",
+      "GraphRAG combines a knowledge graph with vector retrieval so that a system can answer multi-hop questions that require connecting facts across several documents, not just questions answerable from a single passage.",
+      "Faithfulness in RAG evaluation measures whether a generated answer's claims are actually supported by the retrieved context, independent of whether the answer happens to be factually true in the real world."
+    ],
+    "generated_answer": "By representing information as a knowledge graph and then traversing its edges, a system can follow \u201chops\u201d from one entity to another to gather the linked facts needed for a multi\u2011step query.\u202fGraphRAG extends this approach by coupling the graph with vector\u2011based retrieval, so that relevant passages from multiple documents are fetched and linked via the graph, enabling the answer to be assembled from several connected facts rather than a single passage.",
+    "strategy": "semantic",
+    "hit_at_1": 0.0,
+    "hit_at_3": 1.0,
+    "mrr": 0.5,
+    "faithfulness": 1.0,
+    "answer_relevancy": 0.75
+  },
+  {
+    "query_id": "q_20",
+    "query": "How can a piece of text's embedding reflect the context around it?",
+    "relevant_ids": [
+      "doc_20"
+    ],
+    "retrieved_ids": [
+      "doc_06_semantic",
+      "doc_20_semantic",
+      "doc_14_semantic"
+    ],
+    "retrieved_source_doc_ids": [
+      "doc_06",
+      "doc_20",
+      "doc_14"
+    ],
+    "retrieved_context": [
+      "Late chunking generates token-level embeddings for an entire document first, then pools them into chunk vectors afterward, so each chunk's embedding still carries context from the rest of the document.",
+      "Contextual embeddings adjust a chunk's vector representation using surrounding document context, so that a chunk which reads ambiguously on its own still embeds close to queries about the topic it actually belongs to.",
+      "Semantic chunking splits text at points where the embedding similarity between adjacent sentences drops sharply, aiming to keep each chunk topically coherent instead of cutting at a fixed number of characters."
+    ],
+    "generated_answer": "A text\u2019s embedding can be made to carry surrounding information by computing it in the context of the whole document rather than in isolation.\u202fFor example, late\u2011chunking first creates token\u2011level embeddings for the entire document and then pools them into chunk vectors, so each chunk\u2019s vector retains signals from the rest of the text.\u202fSimilarly, contextual embeddings explicitly adjust a chunk\u2019s vector using the surrounding sentences, allowing an ambiguous passage to embed near queries that match its true topic. In this way the embedding reflects the broader context around the piece of text.",
+    "strategy": "semantic",
+    "hit_at_1": 0.0,
+    "hit_at_3": 1.0,
+    "mrr": 0.5,
+    "faithfulness": 1.0,
+    "answer_relevancy": 1.0
+  }
+]

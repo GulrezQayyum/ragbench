@@ -1,0 +1,82 @@
+[
+  {
+    "doc_id": "doc_01",
+    "content": "Reciprocal rank fusion combines ranked lists from multiple retrievers by scoring each document as the sum of 1 divided by (k plus its rank) across all lists, so documents that appear near the top of several lists rise above documents that only appear once."
+  },
+  {
+    "doc_id": "doc_02",
+    "content": "Cross-encoder rerankers take a query and a candidate passage together as a single input to a transformer, letting attention flow between them, which usually produces more accurate relevance scores than comparing two independently computed embeddings."
+  },
+  {
+    "doc_id": "doc_03",
+    "content": "BM25 is a sparse retrieval function that scores documents based on term frequency and inverse document frequency, with saturation so that repeating a keyword many times gives diminishing returns rather than an unbounded score boost."
+  },
+  {
+    "doc_id": "doc_04",
+    "content": "Dense retrieval encodes both queries and documents into the same vector space using a neural embedding model, then ranks documents by cosine similarity or dot product to the query vector."
+  },
+  {
+    "doc_id": "doc_05",
+    "content": "A knowledge graph represents facts as triples of subject, relation, and object, allowing multi-hop questions to be answered by traversing edges between entities rather than searching raw text."
+  },
+  {
+    "doc_id": "doc_06",
+    "content": "Late chunking generates token-level embeddings for an entire document first, then pools them into chunk vectors afterward, so each chunk's embedding still carries context from the rest of the document."
+  },
+  {
+    "doc_id": "doc_07",
+    "content": "Parent-child chunking splits a document into small child chunks for precise retrieval matching, while keeping a link to a larger parent chunk that gets returned to the language model for fuller context."
+  },
+  {
+    "doc_id": "doc_08",
+    "content": "Faithfulness in RAG evaluation measures whether a generated answer's claims are actually supported by the retrieved context, independent of whether the answer happens to be factually true in the real world."
+  },
+  {
+    "doc_id": "doc_09",
+    "content": "Context recall measures what fraction of the information needed to answer a question was actually present in the retrieved chunks, which caps the best possible answer quality regardless of how good the generator is."
+  },
+  {
+    "doc_id": "doc_10",
+    "content": "HyDE, or hypothetical document embeddings, prompts a language model to write a fake answer to the query first, then embeds that fake answer instead of the raw query, because answer-shaped text tends to be closer in embedding space to real answer passages than a short question is."
+  },
+  {
+    "doc_id": "doc_11",
+    "content": "Multi-query expansion asks a language model to rewrite one query into several differently phrased versions, retrieves for each version separately, and merges the result lists, which helps when the original phrasing doesn't match the vocabulary used in the source documents."
+  },
+  {
+    "doc_id": "doc_12",
+    "content": "Step-back prompting asks a language model to first produce a more general or abstract version of a question before answering the specific one, which can surface background context that the specific question alone would miss."
+  },
+  {
+    "doc_id": "doc_13",
+    "content": "Query routing uses a classifier or a prompted language model to decide which retrieval strategy or which data source a given query should be sent to, instead of applying the same fixed pipeline to every query."
+  },
+  {
+    "doc_id": "doc_14",
+    "content": "Semantic chunking splits text at points where the embedding similarity between adjacent sentences drops sharply, aiming to keep each chunk topically coherent instead of cutting at a fixed number of characters."
+  },
+  {
+    "doc_id": "doc_15",
+    "content": "Entity linking maps a mention of a name or term in text to a specific node in a knowledge graph, which is a prerequisite step before multi-hop graph traversal can be used to answer a question about that entity."
+  },
+  {
+    "doc_id": "doc_16",
+    "content": "Vector databases like ChromaDB store embeddings alongside metadata and support approximate nearest neighbor search, which trades a small amount of recall for large gains in query speed compared to brute-force comparison."
+  },
+  {
+    "doc_id": "doc_17",
+    "content": "Answer relevancy in RAG evaluation checks whether the generated answer actually addresses what the user asked, penalizing answers that are factually supported by the context but wander off topic."
+  },
+  {
+    "doc_id": "doc_18",
+    "content": "Fixed-size chunking splits a document into chunks of a set number of tokens or words with a small overlap between consecutive chunks, and is the simplest chunking strategy to implement though not the most topically coherent."
+  },
+  {
+    "doc_id": "doc_19",
+    "content": "GraphRAG combines a knowledge graph with vector retrieval so that a system can answer multi-hop questions that require connecting facts across several documents, not just questions answerable from a single passage."
+  },
+  {
+    "doc_id": "doc_20",
+    "content": "Contextual embeddings adjust a chunk's vector representation using surrounding document context, so that a chunk which reads ambiguously on its own still embeds close to queries about the topic it actually belongs to."
+  }
+]

@@ -1,0 +1,102 @@
+[
+  {
+    "query_id": "q_01",
+    "query": "How does RRF combine results from different rankers?",
+    "relevant_ids": ["doc_01"]
+  },
+  {
+    "query_id": "q_02",
+    "query": "What makes cross-encoders more accurate than comparing two separate embeddings?",
+    "relevant_ids": ["doc_02"]
+  },
+  {
+    "query_id": "q_03",
+    "query": "Explain how keyword frequency scoring works in sparse search",
+    "relevant_ids": ["doc_03"]
+  },
+  {
+    "query_id": "q_04",
+    "query": "How do neural embeddings enable similarity search between text?",
+    "relevant_ids": ["doc_04"]
+  },
+  {
+    "query_id": "q_05",
+    "query": "How are real-world facts represented so a system can traverse them?",
+    "relevant_ids": ["doc_05"]
+  },
+  {
+    "query_id": "q_06",
+    "query": "What is late chunking and why keep document-level context in each chunk?",
+    "relevant_ids": ["doc_06"]
+  },
+  {
+    "query_id": "q_07",
+    "query": "How does parent-child chunking balance precise matching with full context?",
+    "relevant_ids": ["doc_07"]
+  },
+  {
+    "query_id": "q_08",
+    "query": "How do you check if a generated answer is actually grounded in what was retrieved?",
+    "relevant_ids": ["doc_08"]
+  },
+  {
+    "query_id": "q_09",
+    "query": "What metric caps answer quality based on how much needed info was retrieved?",
+    "relevant_ids": ["doc_09"]
+  },
+  {
+    "query_id": "q_10",
+    "query": "Why would a system generate a fake answer before embedding a search query?",
+    "relevant_ids": ["doc_10"]
+  },
+  {
+    "query_id": "q_11",
+    "query": "How does rephrasing one question into several versions help retrieval?",
+    "relevant_ids": ["doc_11"]
+  },
+  {
+    "query_id": "q_12",
+    "query": "What is the benefit of asking a broader question before the specific one?",
+    "relevant_ids": ["doc_12"]
+  },
+  {
+    "query_id": "q_13",
+    "query": "How does a system decide which retrieval approach to use for a given question?",
+    "relevant_ids": ["doc_13"]
+  },
+  {
+    "query_id": "q_14",
+    "query": "How do you split text based on topic shifts instead of a fixed length?",
+    "relevant_ids": ["doc_14"]
+  },
+  {
+    "query_id": "q_15",
+    "query": "What step connects a mentioned name to a node in a graph?",
+    "relevant_ids": ["doc_15"]
+  },
+  {
+    "query_id": "q_16",
+    "query": "What tradeoff do fast approximate vector search methods make?",
+    "relevant_ids": ["doc_16"]
+  },
+  {
+    "query_id": "q_17",
+    "query": "How do you measure whether a generated answer stays on topic?",
+    "relevant_ids": ["doc_17"]
+  },
+  {
+    "query_id": "q_18",
+    "query": "What is the simplest way to break a document into pieces?",
+    "relevant_ids": ["doc_18"]
+  },
+  {
+    "query_id": "q_19",
+    "query": "How can questions requiring multiple connected facts be answered?",
+    "relevant_ids": ["doc_19"]
+  },
+  {
+    "query_id": "q_20",
+    "query": "How can a piece of text's embedding reflect the context around it?",
+    "relevant_ids": ["doc_20"]
+  }
+]
