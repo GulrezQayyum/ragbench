@@ -1,6 +1,6 @@
+import spaces
 import gradio as gr
 import pandas as pd
-import spaces
 
 @spaces.GPU
 def gpu_check():
