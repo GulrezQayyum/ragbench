@@ -19,19 +19,7 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # 1. Set up Git configuration
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          
-          # 2. Delete the downloaded Git history to drop the old .venv files
-          rm -rf .git
-          
-          # 3. Initialize a fresh Git repository and create a new commit
-          git init
-          git branch -m main
-          git add .
-          git commit -m "Deploy clean state to Hugging Face"
-          
-          # 4. Force push this clean commit to your Space
           git remote add huggingface "https://Gul55555:${HF_TOKEN}@huggingface.co/spaces/Gul55555/ragbench"
-          git push huggingface main --force
+          git push huggingface HEAD:main --force
