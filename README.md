@@ -1,3 +1,13 @@
+---
+title: RAGBench
+emoji: 🦙
+colorFrom: blue
+colorTo: purple
+sdk: gradio
+app_file: app.py
+pinned: false
+---
+
 # RAGBench
 
 **RAGBench** is a lightweight evaluation framework for benchmarking Retrieval-Augmented Generation (RAG) systems and comparing different chunking strategies.
