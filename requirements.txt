@@ -1,6 +1,29 @@
-groq>=0.4.0
-chromadb>=0.3.21
-sentence-transformers>=2.2.2
-pandas>=2.0.0
-python-dotenv>=1.0.0
-streamlit>=1.28.0
+# RAGBench Requirements
+# 
+# Install with: pip install -r requirements.txt
+
+# Web Interface (Choose ONE)
+gradio>=4.0.0              # Interactive Gradio interface (recommended - free!)
+
+# Core ML/NLP
+transformers>=4.30.0       # Hugging Face transformers
+torch>=2.0.0               # PyTorch (base dependency)
+sentence-transformers>=2.2.2  # Embeddings
+
+# Vector Database
+chromadb>=0.3.21           # Vector store for RAG
+
+# Evaluation
+ragas>=0.0.50              # RAG evaluation framework
+
+# Data Processing
+datasets>=2.10.0           # Hugging Face datasets
+pandas>=1.5.0              # Data manipulation
+
+# API & Environment
+groq>=0.4.0                # Groq LLM API (fast inference)
+python-dotenv>=1.0.0       # Environment variable management
+
+# Optional: Development
+pytest>=7.0.0              # Testing (optional)
+black>=23.0.0              # Code formatting (optional)
