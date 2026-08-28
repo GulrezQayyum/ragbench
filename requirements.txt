@@ -27,3 +27,5 @@ python-dotenv>=1.0.0       # Environment variable management
 # Optional: Development
 pytest>=7.0.0              # Testing (optional)
 black>=23.0.0              # Code formatting (optional)
+
+spaces>=0.0.1              # Hugging Face Spaces integration

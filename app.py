@@ -1,5 +1,10 @@
 import gradio as gr
 import pandas as pd
+import spaces
+
+@spaces.GPU
+def gpu_check():
+    return "ZeroGPU is active"
 
 # ==================== DATA ====================
 
@@ -412,16 +417,17 @@ Planned improvements:
 # ==================== BUILD GRADIO INTERFACE ====================
 
 with gr.Blocks(title="RAGBench", theme=gr.themes.Soft()) as demo:
-    
-    # Header
-    gr.Markdown(
-        """
-        # 🦙 RAGBench
-        ### Lightweight Evaluation Framework for RAG Systems
-        
-        Systematically compare RAG chunking strategies with reproducible benchmarks.
-        """
-    )
+    gr.Markdown("### ZeroGPU Status")
+
+    gpu_status = gr.Button("Check GPU")
+
+    gpu_output = gr.Textbox(label="Status")
+
+    gpu_status.click(
+    fn=gpu_check,
+    inputs=None,
+    outputs=gpu_output
+)
     
     # Tabs
     with gr.Tabs():
