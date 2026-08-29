@@ -9,7 +9,9 @@ from typing import Tuple
 
 # Check if Groq API key is available
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-HAS_API_KEY = GROQ_API_KEY is not None
+HAS_API_KEY = bool(GROQ_API_KEY)
+
+print("🔑 Groq API key detected:", HAS_API_KEY)
 
 # ==================== DATA ====================
 
