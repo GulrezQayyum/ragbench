@@ -1,13 +1,4 @@
-"""
-RAGBench Interactive - Gradio Version
-Deploy this to Hugging Face Spaces for interactive RAG benchmarking
-
-Users can now:
-- View documentation
-- See pre-computed results
-- Try with their own corpus & queries!
-"""
-
+import spaces
 import gradio as gr
 import pandas as pd
 import json
@@ -41,6 +32,7 @@ def validate_json(json_str: str, field_name: str) -> Tuple[bool, dict, str]:
     except json.JSONDecodeError as e:
         return False, None, f"❌ Invalid JSON in {field_name}: {str(e)}"
 
+@spaces.GPU
 def run_custom_evaluation(corpus_json: str, queries_json: str, strategy: str) -> str:
     """Run evaluation on custom corpus and queries"""
     
@@ -581,7 +573,7 @@ Ready? Fill in the corpus and queries below! 👇
 
 # ==================== BUILD GRADIO INTERFACE ====================
 
-with gr.Blocks(title="RAGBench", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="RAGBench") as demo:
     
     # Header
     gr.Markdown(
@@ -686,4 +678,4 @@ with gr.Blocks(title="RAGBench", theme=gr.themes.Soft()) as demo:
 
 # Launch
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(theme=gr.themes.Soft())
