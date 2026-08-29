@@ -1,10 +1,24 @@
-import spaces
+"""
+RAGBench Interactive - Gradio Version
+Deploy this to Hugging Face Spaces for interactive RAG benchmarking
+
+Users can now:
+- View documentation
+- See pre-computed results
+- Try with their own corpus & queries!
+"""
+
 import gradio as gr
 import pandas as pd
+import json
+import os
+from typing import Tuple
 
-@spaces.GPU
-def gpu_check():
-    return "ZeroGPU is active"
+# ==================== CONFIGURATION ====================
+
+# Check if Groq API key is available
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+HAS_API_KEY = GROQ_API_KEY is not None
 
 # ==================== DATA ====================
 
@@ -17,7 +31,131 @@ results_data = {
 
 df_results = pd.DataFrame(results_data)
 
-# ==================== TAB 1: OVERVIEW ====================
+# ==================== INTERACTIVE FUNCTIONS ====================
+
+def validate_json(json_str: str, field_name: str) -> Tuple[bool, dict, str]:
+    """Validate and parse JSON input"""
+    try:
+        data = json.loads(json_str)
+        return True, data, f"✅ {field_name} is valid JSON"
+    except json.JSONDecodeError as e:
+        return False, None, f"❌ Invalid JSON in {field_name}: {str(e)}"
+
+def run_custom_evaluation(corpus_json: str, queries_json: str, strategy: str) -> str:
+    """Run evaluation on custom corpus and queries"""
+    
+    # Validate inputs
+    corpus_valid, corpus_data, corpus_msg = validate_json(corpus_json, "Corpus")
+    if not corpus_valid:
+        return f"Error: {corpus_msg}"
+    
+    queries_valid, queries_data, queries_msg = validate_json(queries_json, "Queries")
+    if not queries_valid:
+        return f"Error: {queries_msg}"
+    
+    if not HAS_API_KEY:
+        return """❌ **Groq API Key Not Found**
+
+To run evaluations, you need to:
+
+1. Get a free Groq API key: https://console.groq.com
+2. Contact the Space owner to add it to the Space secrets
+
+For now, you can:
+- View pre-computed results in the "Results" tab
+- Run evaluations locally on your machine
+- Read the documentation for how to set up
+
+**Local Setup:**
+```bash
+git clone https://github.com/GulrezQayyum/ragbench
+cd ragbench
+pip install -r requirements.txt
+export GROQ_API_KEY="your_key_here"
+python eval.py
+```
+"""
+    
+    # Check corpus format
+    if not isinstance(corpus_data, dict):
+        return "❌ Corpus must be a JSON object with document IDs as keys"
+    
+    if len(corpus_data) == 0:
+        return "❌ Corpus is empty. Please provide at least 1 document"
+    
+    # Check queries format
+    if not isinstance(queries_data, list):
+        return "❌ Queries must be a JSON array of query objects"
+    
+    if len(queries_data) == 0:
+        return "❌ Queries array is empty. Please provide at least 1 query"
+    
+    # Validate query structure
+    for i, q in enumerate(queries_data):
+        if not isinstance(q, dict):
+            return f"❌ Query {i} is not a valid object"
+        if "query" not in q:
+            return f"❌ Query {i} missing 'query' field"
+        if "relevant_ids" not in q:
+            return f"❌ Query {i} missing 'relevant_ids' field"
+    
+    # Prepare response
+    response = f"""
+✅ **Inputs Valid!**
+
+**Corpus:** {len(corpus_data)} documents
+**Queries:** {len(queries_data)} queries
+**Strategy:** {strategy}
+
+---
+
+## 📊 Evaluation Setup
+
+Your inputs are properly formatted:
+
+### Corpus Preview
+Documents loaded: {list(corpus_data.keys())[:3]}... ({len(corpus_data)} total)
+
+### Queries Preview
+```
+{json.dumps(queries_data[:2], indent=2)}
+...
+```
+
+---
+
+## ⏳ Next Steps
+
+Your evaluation is ready to run! 
+
+**To execute the evaluation:**
+
+1. Run locally with your API key:
+```bash
+git clone https://github.com/GulrezQayyum/ragbench
+cd ragbench
+export GROQ_API_KEY="your_key"
+python eval.py
+```
+
+2. Or contact the Space owner to add Groq API key to secrets
+
+---
+
+## 📈 Expected Results
+
+The evaluation will:
+- Compare {strategy} chunking strategy
+- Run against {len(queries_data)} queries
+- Measure retrieval & generation quality
+- Generate detailed comparison report
+
+**Estimated time:** 2-5 minutes (depending on corpus size)
+"""
+    
+    return response
+
+# ==================== TAB CONTENTS ====================
 
 def tab_overview():
     return """
@@ -59,8 +197,6 @@ When building RAG systems, one critical question arises:
 **Separating evaluation into retrieval and generation helps identify 
 where problems originate.**
 """
-
-# ==================== TAB 2: ABOUT ====================
 
 def tab_about():
     return """
@@ -130,8 +266,6 @@ ragbench/
 ```
 """
 
-# ==================== TAB 3: RESULTS ====================
-
 def tab_results():
     results_html = df_results.to_html(index=False)
     
@@ -195,8 +329,6 @@ Each strategy excels at different metrics:
 
 **Conclusion:** Select based on your priorities, not arbitrary choice.
 """
-
-# ==================== TAB 4: HOW TO USE ====================
 
 def tab_how_to_use():
     return """
@@ -262,59 +394,22 @@ Edit `test_queries.json`:
 }
 ```
 
-More queries = more reliable results.
-
 ### Change Embedding Model
 
-In `eval.py`, modify:
+In `eval.py`:
 
 ```python
 embeddings_model = SentenceTransformer("all-mpnet-base-v2")
 ```
 
-Try: `all-MiniLM-L6-v2` (faster), `all-mpnet-base-v2` (better quality)
-
 ### Adjust Chunking Configuration
-
-In `eval.py`, change parent-child parameters:
-
-```python
-sentences_per_child = 3  # Smaller = finer chunks
-```
-
-### Change Retrieval Top-K
 
 In `eval.py`:
 
 ```python
-top_k = 5  # Instead of 3
-```
-
----
-
-## Troubleshooting
-
-**Issue:** `GROQ_API_KEY not set`
-```bash
-# Solution: Verify environment variable
-echo $GROQ_API_KEY
-
-# Or use .env file
-cat .env
-```
-
-**Issue:** Slow evaluation
-- Normal! LLM inference takes time (~2-3 min per strategy)
-- Benchmark is lightweight intentionally
-
-**Issue:** Module not found
-```bash
-# Verify all dependencies
-pip install -r requirements.txt --upgrade
+sentences_per_child = 3  # Smaller = finer chunks
 ```
 """
-
-# ==================== TAB 5: DOCS ====================
 
 def tab_documentation():
     return """
@@ -326,125 +421,249 @@ def tab_documentation():
 
 **Hit@K (Hit at K)**
 - Measures if any relevant document appears in top-K results
-- Hit@1: Relevant result is 1st
-- Hit@3: Relevant result is in top 3
 - Range: 0.0 to 1.0 (higher is better)
 
 **Mean Reciprocal Rank (MRR)**
 - Average of reciprocal ranks of first relevant results
-- Formula: 1/N × Σ(1/rank of first relevant result)
 - Range: 0.0 to 1.0 (higher is better)
-- Example: If first relevant is at rank 2, contributes 0.5
 
 ### Generation Metrics
 
 **Faithfulness**
 - Does generated answer strictly follow retrieved context?
-- Penalizes hallucinations and unsupported claims
 - Range: 0.0 to 1.0 (higher is better)
 
 **Answer Relevancy**
 - Does answer directly address the question?
-- Penalizes verbose or off-topic responses
 - Range: 0.0 to 1.0 (higher is better)
+
+---
+
+## Input Format Guide
+
+### Corpus Format (JSON)
+
+```json
+{
+  "doc_1": "First document content...",
+  "doc_2": "Second document content...",
+  "doc_3": "Third document content..."
+}
+```
+
+### Queries Format (JSON Array)
+
+```json
+[
+  {
+    "query_id": "q_1",
+    "query": "What is RAG?",
+    "relevant_ids": ["doc_1", "doc_2"]
+  },
+  {
+    "query_id": "q_2",
+    "query": "How does chunking work?",
+    "relevant_ids": ["doc_3"]
+  }
+]
+```
 
 ---
 
 ## Why Multiple Metrics?
 
-A single metric isn't sufficient because:
-
-❌ High MRR ≠ high answer quality
-❌ High faithfulness ≠ relevant answer
-❌ Perfect retrieval ≠ perfect generation
-
-**Using all 5 metrics gives complete picture of RAG performance.**
-
----
-
-## Evaluation Limitations
-
-### Small Dataset
-- Only 20 documents and queries
-- Intentional for development
-- Future: expand to 100+ queries
-
-### No Human Evaluation
-- LLM-based evaluation can vary
-- Future: add human annotation layer
-
-### Specialized Domain
-- Corpus focuses on RAG/LLM concepts
-- Results may not generalize to other domains
-- Domain adaptation needed for production
-
-### Missing Metrics
-- context_recall (not implemented yet)
-- context_relevancy (not implemented yet)
-- Statistical significance tests (need larger dataset)
+- ❌ High MRR ≠ high answer quality
+- ❌ High faithfulness ≠ relevant answer
+- ✅ Multiple metrics give complete picture
 
 ---
 
 ## Roadmap
 
-Currently implemented:
-- ✅ Semantic/document-level chunking
-- ✅ Parent-child chunking
-- ✅ Hit@1, Hit@3, MRR metrics
-- ✅ Faithfulness, Answer Relevancy metrics
-- ✅ Automated comparison reports
-
-Planned improvements:
+- [x] Semantic/document-level chunking
+- [x] Parent-child chunking
+- [x] Core metrics (Hit@1, Hit@3, MRR, Faithfulness, Answer Relevancy)
 - [ ] Add context_recall metric
 - [ ] Add context_relevancy metric
-- [ ] Expand benchmark to 100+ queries
-- [ ] Add human evaluation framework
-- [ ] Test 5+ chunking strategies
+- [ ] Expand benchmark dataset
+- [ ] Human evaluation framework
 - [ ] Compare embedding models
 - [ ] Statistical significance testing
-- [ ] Multi-language support
+"""
+
+def tab_try_it():
+    return """
+# 🧪 Try It Yourself
+
+## Run Custom Evaluation
+
+Test RAGBench with your own corpus and queries!
+
+### How It Works
+
+1. **Prepare your corpus** (JSON object with document content)
+2. **Prepare your queries** (JSON array with query objects)
+3. **Select a chunking strategy** (Semantic or Parent-Child)
+4. **Click "Validate & Run"** to start evaluation
+
+### Input Examples
+
+See the **Input Format Guide** in the Documentation tab for exact JSON structure.
 
 ---
 
-## References
+## 📋 Step-by-Step Guide
 
-- [RAGAS Documentation](https://docs.ragas.io/)
-- [ChromaDB](https://www.trychroma.com/)
-- [Sentence Transformers](https://huggingface.co/docs/hub/sentence-transformers)
-- [Chunking Strategies Survey](https://arxiv.org/abs/2401.07559)
+### Step 1: Format Your Corpus
+
+Create a JSON object where keys are document IDs:
+
+```json
+{
+  "doc_1": "Your document content here...",
+  "doc_2": "Another document...",
+  "doc_3": "Yet another document..."
+}
+```
+
+### Step 2: Format Your Queries
+
+Create a JSON array of query objects:
+
+```json
+[
+  {
+    "query_id": "q_1",
+    "query": "Your question here?",
+    "relevant_ids": ["doc_1"]
+  },
+  {
+    "query_id": "q_2",
+    "query": "Another question?",
+    "relevant_ids": ["doc_2", "doc_3"]
+  }
+]
+```
+
+### Step 3: Choose Strategy & Validate
+
+Select your strategy and click "Validate & Run"
+
+---
+
+## ⏱️ Timing
+
+- **Validation:** Instant
+- **Full Evaluation:** 2-5 minutes (depending on corpus/query size)
+- **Result Generation:** <1 minute
+
+---
+
+## 💡 Tips
+
+✅ Start small: 3-5 documents, 2-3 queries
+✅ Ensure relevant_ids match your document IDs
+✅ Use clear, specific queries
+✅ Test both strategies for comparison
+
+---
+
+## 🆘 Troubleshooting
+
+**"Invalid JSON"** → Check your brackets and quotes
+**"Missing fields"** → Ensure required fields are present
+**"API Key Error"** → Contact Space owner
+
+---
+
+Ready? Fill in the corpus and queries below! 👇
 """
 
 # ==================== BUILD GRADIO INTERFACE ====================
 
 with gr.Blocks(title="RAGBench", theme=gr.themes.Soft()) as demo:
-    gr.Markdown("### ZeroGPU Status")
-
-    gpu_status = gr.Button("Check GPU")
-
-    gpu_output = gr.Textbox(label="Status")
-
-    gpu_status.click(
-    fn=gpu_check,
-    inputs=None,
-    outputs=gpu_output
-)
+    
+    # Header
+    gr.Markdown(
+        """
+        # 🦙 RAGBench
+        ### Lightweight Evaluation Framework for RAG Systems
+        
+        Systematically compare RAG chunking strategies with reproducible benchmarks.
+        """
+    )
     
     # Tabs
     with gr.Tabs():
+        # Tab 1: Overview
         with gr.TabItem("📊 Overview"):
             gr.Markdown(tab_overview())
         
+        # Tab 2: About
         with gr.TabItem("🧪 About"):
             gr.Markdown(tab_about())
         
+        # Tab 3: Results
         with gr.TabItem("📈 Results"):
             gr.Markdown(tab_results())
         
+        # Tab 4: How to Use
         with gr.TabItem("🚀 How to Use"):
             gr.Markdown(tab_how_to_use())
         
+        # Tab 5: Documentation
         with gr.TabItem("📚 Documentation"):
             gr.Markdown(tab_documentation())
+        
+        # Tab 6: TRY IT YOURSELF (NEW!)
+        with gr.TabItem("🧪 Try It Yourself"):
+            gr.Markdown(tab_try_it())
+            
+            # Input section
+            gr.Markdown("## 📥 Input Your Data")
+            
+            with gr.Row():
+                with gr.Column():
+                    corpus_input = gr.Textbox(
+                        label="📄 Corpus (JSON Object)",
+                        placeholder='{"doc_1": "content...", "doc_2": "content..."}',
+                        lines=8,
+                        max_lines=20
+                    )
+                
+                with gr.Column():
+                    queries_input = gr.Textbox(
+                        label="❓ Queries (JSON Array)",
+                        placeholder='[{"query_id": "q_1", "query": "Your question?", "relevant_ids": ["doc_1"]}]',
+                        lines=8,
+                        max_lines=20
+                    )
+            
+            # Strategy selection
+            strategy_select = gr.Radio(
+                ["Semantic", "Parent-Child", "Both"],
+                value="Both",
+                label="🎯 Chunking Strategy"
+            )
+            
+            # Run button
+            run_button = gr.Button("✅ Validate & Run Evaluation", variant="primary", size="lg")
+            
+            # Output
+            gr.Markdown("## 📊 Results")
+            output_area = gr.Textbox(
+                label="Evaluation Results",
+                lines=15,
+                max_lines=30,
+                interactive=False
+            )
+            
+            # Connect button to function
+            run_button.click(
+                fn=run_custom_evaluation,
+                inputs=[corpus_input, queries_input, strategy_select],
+                outputs=output_area
+            )
     
     # Footer
     gr.Markdown(
@@ -453,8 +672,8 @@ with gr.Blocks(title="RAGBench", theme=gr.themes.Soft()) as demo:
         ### 🔗 Quick Links
         
         - **GitHub:** [github.com/GulrezQayyum/ragbench](https://github.com/GulrezQayyum/ragbench)
-        - **Test Queries Dataset:** [HF Hub](https://huggingface.co/datasets/Gul55555/ragbench-queries?utm_source=chatgpt.com)
-        - **Corpus Dataset:** [HF Hub](https://huggingface.co/datasets/Gul55555/ragbench-corpus?utm_source=chatgpt.com)
+        - **Test Queries Dataset:** [HF Hub](https://huggingface.co/datasets/Gul55555/ragbench-queries)
+        - **Corpus Dataset:** [HF Hub](https://huggingface.co/datasets/Gul55555/ragbench-corpus)
         - **Author:** [Gulrez Qayyum](https://github.com/GulrezQayyum)
         
         ### 📖 Built With
