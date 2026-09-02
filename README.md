@@ -945,34 +945,6 @@ The report contains the detailed metric statistics and query-level comparison ge
 
 ---
 
-# Roadmap
-
-* [x] Build evaluation corpus
-* [x] Create fixed benchmark queries
-* [x] Implement Semantic/document-level strategy
-* [x] Implement Parent-Child strategy
-* [x] Implement retrieval evaluation
-* [x] Implement generation evaluation
-* [x] Generate automated comparison report
-* [x] Add query-level analysis
-* [ ] Add Context Relevancy
-* [ ] Add Context Recall
-* [ ] Expand benchmark dataset
-* [ ] Add human evaluation
-* [ ] Add additional chunking strategies
-* [ ] Add additional embedding models
-* [ ] Add statistical significance analysis
-
----
-
-# References
-
-* [RAGAS Documentation](https://docs.ragas.io/)
-* [LlamaIndex Evaluation Documentation](https://docs.llamaindex.ai/)
-* [Chunking Strategies Survey](https://arxiv.org/abs/2401.07559)
-
----
-
 # License
 
 This project is intended for educational, experimental, and research purposes.
